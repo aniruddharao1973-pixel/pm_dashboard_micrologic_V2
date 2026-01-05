@@ -1,0 +1,277 @@
+/* Base Styles */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+/* Hide scrollbar but keep scroll functionality */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+/* Custom scrollbar that appears only during scroll */
+.scroll-appear {
+  scrollbar-width: thin;
+  scrollbar-color: #c1c1c1 transparent;
+  transition: scrollbar-color 0.3s ease-in-out;
+}
+
+.scroll-appear::-webkit-scrollbar {
+  width: 8px;
+}
+
+.scroll-appear::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0); /* hidden by default */
+  border-radius: 8px;
+  transition: background 0.3s ease-in-out;
+}
+
+/* When scrolling — scrollbar becomes visible */
+.scroll-appear.scrolling::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.4);
+}
+
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.25s ease-out;
+}
+
+.ap-input {
+  width: 100% !important;
+  border-radius: 12px !important;
+  border: 2px solid #c084fc !important;
+  padding: 12px !important;
+}
+
+.ap-dropdown-menu {
+  z-index: 99999 !important;
+  background: white !important;
+  border-radius: 12px !important;
+  border: 1px solid #e5e7eb !important;
+}
+/* Force SweetAlert above all modals */
+.swal2-container {
+  z-index: 999999 !important;
+}
+
+.swal2-popup {
+  z-index: 1000000 !important;
+  position: relative !important;
+}
+
+/* from here starts new ////////////////////////////////////////////////////////////////////////////////////////////////////////////*
+
+
+/* ===== SMOOTH ANIMATION FIXES ===== */
+
+/* Prevent flash of unstyled content */
+html {
+  @apply antialiased;
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-gray-50 text-gray-900;
+  overflow-x: hidden;
+  opacity: 1;
+  transition: opacity 0.3s ease;
+}
+
+/* Smooth transitions for all elements */
+.transition-default {
+  transition: background-color 0.3s ease, border-color 0.3s ease,
+    color 0.3s ease, transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* Fix for initial page load */
+.opacity-0 {
+  opacity: 0;
+}
+
+.opacity-100 {
+  opacity: 1;
+  transition: opacity 0.3s ease-in-out;
+}
+
+/* ===== SIDEBAR SPECIFIC FIXES ===== */
+
+/* Force GPU acceleration for smooth transforms */
+/* Do NOT override transform for every .fixed element,
+   otherwise Tailwind's translate-x-* cannot work for the sidebar */
+.fixed {
+  position: fixed !important;
+  backface-visibility: hidden;
+  will-change: transform, opacity;
+}
+
+/* Sidebar transition helpers (keeps element mounted while animating) */
+.sidebar-transition {
+  transition: transform 280ms cubic-bezier(0.22, 0.9, 0.12, 1),
+    opacity 240ms cubic-bezier(0.22, 0.9, 0.12, 1);
+  will-change: transform, opacity;
+}
+
+/* Open state */
+.sidebar-open {
+  transform: translateX(0);
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Closed state (slides out to the left and fades) */
+.sidebar-closed {
+  transform: translateX(-100%);
+  opacity: 0;
+  visibility: hidden; /* visibility can flip after animation; JS handles unmount timing */
+}
+
+/* Overlay (backdrop) transitions */
+.overlay-transition {
+  transition: opacity 240ms cubic-bezier(0.22, 0.9, 0.12, 1);
+  will-change: opacity;
+}
+
+/* Overlay visible/hidden helpers */
+.overlay-visible {
+  opacity: 1;
+  pointer-events: auto;
+  visibility: visible;
+}
+
+.overlay-hidden {
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+}
+
+/* sensible z-index utilities */
+.z-sidebar {
+  z-index: 50;
+}
+.z-overlay {
+  z-index: 40;
+}
+
+/* ------- Optional compatibility: if you're still using Tailwind utility classes ------- */
+/* These make translate-x-0 / -translate-x-full animate smoothly without !important */
+.translate-x-0,
+.-translate-x-full {
+  transition: transform 280ms cubic-bezier(0.22, 0.9, 0.12, 1),
+    opacity 240ms ease;
+  will-change: transform, opacity;
+}
+
+/* And make overlay fade if you use bg-black/50 */
+.bg-black\/50 {
+  transition: opacity 240ms cubic-bezier(0.22, 0.9, 0.12, 1);
+}
+
+/* Sidebar / overlay transitions (must exist exactly) */
+.sidebar-transition {
+  transition: transform 280ms cubic-bezier(0.22, 0.9, 0.12, 1),
+    opacity 240ms cubic-bezier(0.22, 0.9, 0.12, 1);
+  will-change: transform, opacity;
+}
+
+.sidebar-open {
+  transform: translateX(0);
+  opacity: 1;
+  visibility: visible;
+}
+
+.sidebar-closed {
+  transform: translateX(-100%);
+  opacity: 0;
+  visibility: hidden;
+}
+
+/* overlay transitions */
+.overlay-transition {
+  transition: opacity 240ms cubic-bezier(0.22, 0.9, 0.12, 1);
+  will-change: opacity;
+}
+.overlay-visible {
+  opacity: 1;
+  pointer-events: auto;
+  visibility: visible;
+}
+.overlay-hidden {
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+}
+
+/* z helpers */
+.z-sidebar {
+  z-index: 50;
+}
+.z-overlay {
+  z-index: 40;
+}
+
+/* small compatibility: make utility translate classes animate smoothly if still used */
+.translate-x-0,
+.-translate-x-full {
+  transition: transform 280ms cubic-bezier(0.22, 0.9, 0.12, 1),
+    opacity 240ms ease;
+  will-change: transform, opacity;
+}
+.bg-black\/50 {
+  transition: opacity 240ms cubic-bezier(0.22, 0.9, 0.12, 1);
+}
+
+/* request modal *
+
+/* Add to your global CSS or create a custom animation in tailwind.config.js */
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 3s linear infinite;
+}
+
+/* FONTS */
+html,
+body {
+  font-family: "Manrope", system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+}
+
+/* Add to your global CSS file */
+.scrollbar-hide {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none; /* Chrome, Safari and Opera */
+}
+
+/* Optional: Add xs breakpoint for extra small devices */
+@media (min-width: 475px) {
+  .xs\:grid-cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

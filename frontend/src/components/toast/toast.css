@@ -1,0 +1,205 @@
+/* ============================================
+   PREMIUM TOAST STYLES (ENHANCED & SAFE)
+   ============================================ */
+
+/* ===============================
+   CONTAINER
+   =============================== */
+.Toastify__toast-container {
+  z-index: 1000000;
+  padding: 16px;
+}
+
+/* ===============================
+   BASE TOAST
+   =============================== */
+.Toastify__toast {
+  border-radius: 16px;
+  padding: 16px 20px;
+  min-height: 64px;
+  position: relative;
+  overflow: hidden;
+
+  font-family: "Inter", "SF Pro Display", system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.5;
+  letter-spacing: -0.01em;
+
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08),
+    0 16px 32px -12px rgba(0, 0, 0, 0.25),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset,
+    0 1px 0 rgba(255, 255, 255, 0.15) inset;
+}
+
+/* ===============================
+   ENTER / EXIT (Toastify lifecycle)
+   =============================== */
+.Toastify__toast--animate-enter {
+  animation: toastSlideIn 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.Toastify__toast--animate-exit {
+  animation: toastFadeOut 0.35s ease forwards;
+}
+
+/* ===============================
+   DECORATIVE OVERLAYS
+   =============================== */
+.Toastify__toast::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.45),
+    transparent
+  );
+}
+
+.Toastify__toast::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse at 50% 0%,
+    rgba(255, 255, 255, 0.14),
+    transparent 60%
+  );
+  pointer-events: none;
+}
+
+/* ===============================
+   BODY
+   =============================== */
+.Toastify__toast-body {
+  padding: 0;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* ===============================
+   ICON
+   =============================== */
+.Toastify__toast-icon {
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.28);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+}
+
+.Toastify__toast-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* ===============================
+   VARIANTS
+   =============================== */
+.Toastify__toast--success {
+  background: linear-gradient(135deg, #22c55e, #15803d);
+  color: #fff;
+}
+
+.Toastify__toast--error {
+  background: linear-gradient(135deg, #ef4444, #991b1b);
+  color: #fff;
+}
+
+.Toastify__toast--warning {
+  background: linear-gradient(135deg, #f59e0b, #b45309);
+  color: #fff;
+}
+
+.Toastify__toast--info {
+  background: linear-gradient(135deg, #3b82f6, #1e40af);
+  color: #fff;
+}
+
+/* ===============================
+   PROGRESS BAR (SLEEK)
+   =============================== */
+.Toastify__progress-bar {
+  height: 3px;
+  border-radius: 0 0 16px 16px;
+  background: rgba(255, 255, 255, 0.5) !important;
+}
+
+/* ===============================
+   CLOSE BUTTON
+   =============================== */
+.Toastify__close-button {
+  color: rgba(255, 255, 255, 0.75);
+  opacity: 1;
+  padding: 4px;
+  border-radius: 6px;
+}
+
+.Toastify__close-button:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
+/* ===============================
+   SAFE HOVER (NO TRANSFORM)
+   =============================== */
+.Toastify__toast:hover {
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(255, 255, 255, 0.18) inset;
+}
+
+/* ===============================
+   ANIMATIONS
+   =============================== */
+@keyframes toastSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes toastFadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* ===============================
+   REDUCED MOTION (ACCESSIBILITY)
+   =============================== */
+@media (prefers-reduced-motion: reduce) {
+  .Toastify__toast--animate-enter,
+  .Toastify__toast--animate-exit {
+    animation: none;
+  }
+}
+
+/* ===============================
+   RESPONSIVE
+   =============================== */
+@media (max-width: 480px) {
+  .Toastify__toast {
+    padding: 14px 16px;
+    border-radius: 14px;
+  }
+}
