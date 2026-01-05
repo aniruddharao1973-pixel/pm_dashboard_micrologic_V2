@@ -1,5 +1,3 @@
-
-
 // middleware/authMiddleware.js
 import jwt from "jsonwebtoken";
 
@@ -26,7 +24,7 @@ export const authMiddleware = (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.user = decoded;
 
-    console.log("✔ Token OK →", decoded);
+    // console.log("✔ Token OK →", decoded);
 
     next();
   } catch (err) {

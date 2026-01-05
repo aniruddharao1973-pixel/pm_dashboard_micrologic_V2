@@ -290,7 +290,7 @@ export default function CustomerProfile() {
         {/* Breadcrumb */}
         {/* <Breadcrumb
           items={[
-            {
+            { 
               label: "Customers",
               to: "/admin/customers",
             },

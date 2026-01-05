@@ -5,26 +5,16 @@ import { Link } from "react-router-dom";
 export default function Breadcrumb({ items = [] }) {
   return (
     <div
-      className="
-    sticky top-0 z-40
-    flex flex-col sm:flex-row gap-1.5
-    text-base sm:text-[15px]
-    mb-6 px-4 py-2.5
+      className="flex flex-col sm:flex-row gap-1.5 text-base sm:text-[15px] mb-6 px-4 py-2.5
 
-    bg-gradient-to-r from-white via-indigo-50/20 to-white
-    backdrop-blur-sm
-    border border-gray-200/60
-    rounded-2xl
-    shadow-sm
-    hover:shadow-md hover:border-indigo-200/70
-    transition-all duration-300
-
-    relative
-    before:absolute before:inset-0 before:bg-gradient-to-r
-    before:from-transparent before:via-indigo-100/10 before:to-transparent
-    before:translate-x-[-100%] hover:before:translate-x-[100%]
-    before:transition-transform before:duration-1000
-  "
+  bg-gradient-to-r from-white via-indigo-50/20 to-white 
+  backdrop-blur-sm border border-gray-200/60 rounded-2xl shadow-sm
+  hover:shadow-md hover:border-indigo-200/70 transition-all duration-300
+  relative
+  before:absolute before:inset-0 before:bg-gradient-to-r 
+  before:from-transparent before:via-indigo-100/10 before:to-transparent
+  before:translate-x-[-100%] hover:before:translate-x-[100%]
+  before:transition-transform before:duration-1000"
     >
       {/* LINE 1 — all except last (mobile + desktop) */}
       <div className="flex flex-wrap items-center gap-1.5 relative z-10">

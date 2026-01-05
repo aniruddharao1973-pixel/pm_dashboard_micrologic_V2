@@ -706,13 +706,22 @@ export const updateCustomerProfile = async (req, res) => {
 
     // 1️⃣ Check if company exists
     const comp = await client.query(
-      "SELECT * FROM companies WHERE id = $1 LIMIT 1",
+      "SELECT id FROM companies WHERE id = $1 LIMIT 1",
       [companyId]
     );
 
     if (comp.rows.length === 0) {
       await client.query("ROLLBACK");
       return res.status(404).json({ message: "Company not found" });
+    }
+
+    // ❌ Admin email is mandatory during edit
+    if (!email || !email.trim()) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({
+        field: "email",
+        message: "Admin email is required",
+      });
     }
 
     // 2️⃣ Update company fields
@@ -740,22 +749,20 @@ export const updateCustomerProfile = async (req, res) => {
       ]
     );
 
-    // 3️⃣ 🔥 Update ADMIN LOGIN EMAIL (NO PASSWORD RESET)
-    if (email && email.trim()) {
-      await client.query(
-        `
-        UPDATE users
-        SET email = LOWER($1)
-        WHERE id IN (
-          SELECT user_id
-          FROM user_companies
-          WHERE company_id = $2
-        )
-        AND role = 'customer'
-        `,
-        [email.trim(), companyId]
-      );
-    }
+    // 3️⃣ Update ADMIN LOGIN EMAIL (validated, no silent skip)
+    await client.query(
+      `
+      UPDATE users
+      SET email = LOWER($1)
+      WHERE id IN (
+        SELECT user_id
+        FROM user_companies
+        WHERE company_id = $2
+      )
+      AND role = 'customer'
+      `,
+      [email.trim(), companyId]
+    );
 
     await client.query("COMMIT");
 
@@ -766,7 +773,38 @@ export const updateCustomerProfile = async (req, res) => {
   } catch (err) {
     await client.query("ROLLBACK");
     console.error("UpdateCompanyProfile ERROR:", err);
-    res.status(500).json({ message: "Server error" });
+
+    // 🔴 Company name duplicate (case-insensitive)
+    if (err.code === "23505" && err.constraint === "companies_name_ci_idx") {
+      return res.status(409).json({
+        field: "name",
+        message: "Company name already exists",
+      });
+    }
+
+    // 🔴 Contact phone duplicate
+    if (
+      err.code === "23505" &&
+      err.constraint === "companies_contact_phone_unique"
+    ) {
+      return res.status(409).json({
+        field: "contactPhone",
+        message: "Contact phone number already exists",
+      });
+    }
+
+    // 🔴 External ID duplicate
+    if (
+      err.code === "23505" &&
+      err.constraint === "companies_external_id_unique"
+    ) {
+      return res.status(409).json({
+        field: "externalId",
+        message: "External ID already exists",
+      });
+    }
+
+    return res.status(500).json({ message: "Server error" });
   } finally {
     client.release();
   }
@@ -856,10 +894,25 @@ export const validateDuplicate = async (req, res) => {
          COMPANY NAME
       --------------------------------------------- */
       case "companyName":
-        result = await pool.query(
-          "SELECT id FROM companies WHERE LOWER(name) = LOWER($1) LIMIT 1",
-          [value]
-        );
+        if (companyId) {
+          // EDIT MODE — exclude current company
+          result = await pool.query(
+            `
+      SELECT id
+      FROM companies
+      WHERE LOWER(name) = LOWER($1)
+        AND id <> $2
+      LIMIT 1
+      `,
+            [value, companyId]
+          );
+        } else {
+          // CREATE MODE
+          result = await pool.query(
+            "SELECT id FROM companies WHERE LOWER(name) = LOWER($1) LIMIT 1",
+            [value]
+          );
+        }
         break;
 
       /* ---------------------------------------------
