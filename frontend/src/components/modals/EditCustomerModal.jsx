@@ -365,59 +365,56 @@ export default function EditCustomerModal({
     }
   };
 
- /* ---------------------------------------------------
+  /* ---------------------------------------------------
    SUBMIT
 --------------------------------------------------- */
-const handleSubmit = async (e) => {
-  e.preventDefault();
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-  const newErrors = {};
+    const newErrors = {};
 
-  if (!form.name.trim()) newErrors.name = "Company name is required";
-  if (!form.externalId.trim())
-    newErrors.externalId = "Customer ID is required";
-  if (!form.email.trim())
-    newErrors.email = "Admin email is required";
-  if (!form.location.trim())
-    newErrors.location = "Location is required";
-  if (!form.contactPerson.trim())
-    newErrors.contactPerson = "Contact person is required";
-  if (!form.contactPhone.trim())
-    newErrors.contactPhone = "Phone number is required";
+    if (!form.name.trim()) newErrors.name = "Company name is required";
+    if (!form.externalId.trim())
+      newErrors.externalId = "Customer ID is required";
+    if (!form.email.trim()) newErrors.email = "Admin email is required";
+    if (!form.location.trim()) newErrors.location = "Location is required";
+    if (!form.contactPerson.trim())
+      newErrors.contactPerson = "Contact person is required";
+    if (!form.contactPhone.trim())
+      newErrors.contactPhone = "Phone number is required";
 
-  if (Object.keys(newErrors).length > 0) {
-    setErrors(newErrors);
-    return;
-  }
-
-  try {
-    setSaving(true);
-
-    const payload = {
-      ...form,
-      email: form.email.trim().toLowerCase(),
-      contactPhone: form.contactPhone.replace(/\s+/g, ""),
-    };
-
-    await updateCustomer(companyId, payload);
-
-    toast.success("Customer updated successfully");
-    onSuccess?.();
-    onClose();
-  } catch (err) {
-    const data = err?.response?.data;
-
-    // 🔥 Backend-aligned field-level error handling
-    if (data?.field) {
-      setErrors({ [data.field]: data.message });
-    } else {
-      toast.error(data?.message || "Failed to update customer");
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
     }
-  } finally {
-    setSaving(false);
-  }
-};
 
+    try {
+      setSaving(true);
+
+      const payload = {
+        ...form,
+        email: form.email.trim().toLowerCase(),
+        contactPhone: form.contactPhone.replace(/\s+/g, ""),
+      };
+
+      await updateCustomer(companyId, payload);
+
+      toast.success("Customer updated successfully");
+      onSuccess?.();
+      onClose();
+    } catch (err) {
+      const data = err?.response?.data;
+
+      // 🔥 Backend-aligned field-level error handling
+      if (data?.field) {
+        setErrors({ [data.field]: data.message });
+      } else {
+        toast.error(data?.message || "Failed to update customer");
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const formatDisplayDate = (dateString) => {
     if (!dateString) return "Not set";
