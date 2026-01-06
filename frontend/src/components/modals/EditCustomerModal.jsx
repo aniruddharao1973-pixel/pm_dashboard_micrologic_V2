@@ -301,8 +301,8 @@ export default function EditCustomerModal({
   const changedCount = Object.values(changedFields).filter(Boolean).length;
 
   /* ---------------------------------------------------
-     CHANGE HANDLER
-  --------------------------------------------------- */
+   CHANGE HANDLER
+--------------------------------------------------- */
   const handleChange = (e) => {
     const { name, value } = e.target;
 
@@ -313,6 +313,25 @@ export default function EditCustomerModal({
 
     // Duplicate check ONLY if value changed from initial
     if (initialForm && value.trim() && value !== initialForm[name]) {
+      // 🔴 COMPANY NAME (case-insensitive, exclude current company)
+      if (name === "name") {
+        validateDuplicate({
+          type: "companyName",
+          value,
+          companyId, // ✅ exclude current company
+        })
+          .then(({ data }) => {
+            if (data.exists) {
+              setErrors((prev) => ({
+                ...prev,
+                name: "Company name already exists",
+              }));
+            }
+          })
+          .catch(() => {});
+      }
+
+      // 🔴 EXTERNAL ID
       if (name === "externalId") {
         validateDuplicate({ type: "externalId", value })
           .then(({ data }) => {
@@ -326,6 +345,7 @@ export default function EditCustomerModal({
           .catch(() => {});
       }
 
+      // 🔴 CONTACT PHONE
       if (name === "contactPhone") {
         validateDuplicate({ type: "phone", value })
           .then(({ data }) => {
@@ -339,11 +359,13 @@ export default function EditCustomerModal({
           .catch(() => {});
       }
     }
+
+    // 🔴 ADMIN EMAIL (exclude current company admin)
     if (name === "email" && value.trim() && initialForm?.email !== value) {
       validateDuplicate({
         type: "email",
         value,
-        companyId, // ✅ exclude current company admin
+        companyId,
       })
         .then(({ data }) => {
           if (data.exists) {
