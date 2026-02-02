@@ -10,7 +10,7 @@ import {
   Hash,
   MapPin,
   User,
-  Phone,
+  // Phone,
   Calendar,
   UserPlus,
   Info,
@@ -143,7 +143,7 @@ export default function CreateCustomerModal({ open, onClose, onSuccess }) {
     externalId: "",
     location: "",
     contactPerson: "",
-    contactPhone: "",
+    // contactPhone: "",
     registerDate: getTodayDate(),
   });
 
@@ -168,7 +168,7 @@ export default function CreateCustomerModal({ open, onClose, onSuccess }) {
       externalId: "",
       location: "",
       contactPerson: "",
-      contactPhone: "",
+      // contactPhone: "",
       registerDate: getTodayDate(),
     });
     setErrors({});
@@ -225,11 +225,11 @@ export default function CreateCustomerModal({ open, onClose, onSuccess }) {
       case "contactPerson":
         return value.trim() ? null : "Contact person is required";
 
-      case "contactPhone":
-        if (!value.trim()) return "Phone number is required";
-        if (!/^\d{7,15}$/.test(value.replace(/\s+/g, "")))
-          return "Enter a valid phone number";
-        return null;
+      // case "contactPhone":
+      //   if (!value.trim()) return "Phone number is required";
+      //   if (!/^\d{7,15}$/.test(value.replace(/\s+/g, "")))
+      //     return "Enter a valid phone number";
+      //   return null;
 
       case "location":
         return value.trim() ? null : "Location is required";
@@ -254,7 +254,7 @@ export default function CreateCustomerModal({ open, onClose, onSuccess }) {
         email: "email",
         companyName: "name",
         externalId: "externalId",
-        phone: "contactPhone",
+        // phone: "contactPhone",
       };
 
       const field = fieldMap[type];
@@ -294,7 +294,7 @@ export default function CreateCustomerModal({ open, onClose, onSuccess }) {
       if (name === "email") checkDuplicateLive("email", value);
       if (name === "name") checkDuplicateLive("companyName", value);
       if (name === "externalId") checkDuplicateLive("externalId", value);
-      if (name === "contactPhone") checkDuplicateLive("phone", value);
+      // if (name === "contactPhone") checkDuplicateLive("phone", value);
     }, 400);
   };
 
@@ -310,12 +310,12 @@ export default function CreateCustomerModal({ open, onClose, onSuccess }) {
     if (name === "email") checkDuplicateLive("email", value);
     if (name === "name") checkDuplicateLive("companyName", value);
     if (name === "externalId") checkDuplicateLive("externalId", value);
-    if (name === "contactPhone") checkDuplicateLive("phone", value);
+    // if (name === "contactPhone") checkDuplicateLive("phone", value);
   };
 
   /* ---------------------------------------------------
-     SUBMIT
-  --------------------------------------------------- */
+   SUBMIT
+--------------------------------------------------- */
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (loading) return;
@@ -329,8 +329,6 @@ export default function CreateCustomerModal({ open, onClose, onSuccess }) {
     if (!form.location.trim()) newErrors.location = "Location is required";
     if (!form.contactPerson.trim())
       newErrors.contactPerson = "Contact person is required";
-    if (!form.contactPhone.trim())
-      newErrors.contactPhone = "Phone number is required";
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (form.email && !emailRegex.test(form.email)) {
@@ -345,7 +343,6 @@ export default function CreateCustomerModal({ open, onClose, onSuccess }) {
         externalId: true,
         location: true,
         contactPerson: true,
-        contactPhone: true,
       });
       return;
     }
@@ -356,7 +353,6 @@ export default function CreateCustomerModal({ open, onClose, onSuccess }) {
       const payload = {
         ...form,
         email: form.email.trim().toLowerCase(),
-        contactPhone: form.contactPhone.replace(/\s+/g, ""),
       };
 
       await createCustomer(payload);
@@ -374,8 +370,6 @@ export default function CreateCustomerModal({ open, onClose, onSuccess }) {
         setErrors({ name: msg });
       } else if (msg?.toLowerCase().includes("customer id")) {
         setErrors({ externalId: msg });
-      } else if (msg?.toLowerCase().includes("phone")) {
-        setErrors({ contactPhone: msg });
       } else {
         toast.error(msg || "Failed to create customer");
       }
@@ -393,7 +387,7 @@ export default function CreateCustomerModal({ open, onClose, onSuccess }) {
     form.email.trim() &&
     form.location.trim() &&
     form.contactPerson.trim() &&
-    form.contactPhone.trim() &&
+    // form.contactPhone.trim() &&
     Object.values(errors).every((err) => !err);
 
   // Calculate completion percentage
@@ -403,10 +397,9 @@ export default function CreateCustomerModal({ open, onClose, onSuccess }) {
     !errors.email && form.email.trim(),
     !errors.location && form.location.trim(),
     !errors.contactPerson && form.contactPerson.trim(),
-    !errors.contactPhone && form.contactPhone.trim(),
   ].filter(Boolean).length;
 
-  const completionPercentage = Math.round((validFields / 6) * 100);
+  const completionPercentage = Math.round((validFields / 5) * 100);
 
   /* ---------------------------------------------------
      UI
@@ -486,7 +479,7 @@ export default function CreateCustomerModal({ open, onClose, onSuccess }) {
                 placeholder="Full name of contact person"
               />
 
-              <FormInput
+              {/* <FormInput
                 label="Phone Number"
                 name="contactPhone"
                 value={form.contactPhone}
@@ -496,7 +489,8 @@ export default function CreateCustomerModal({ open, onClose, onSuccess }) {
                 touched={touched.contactPhone}
                 icon={Phone}
                 placeholder="+1 234 567 8900"
-              />
+                required={false}
+              /> */}
 
               <div className="space-y-1.5" ref={locationWrapperRef}>
                 <label className="flex items-center gap-1.5 text-sm font-medium text-slate-700">

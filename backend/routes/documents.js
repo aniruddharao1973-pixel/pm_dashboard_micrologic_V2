@@ -1,3 +1,10 @@
+/* 
+   NOTE:
+   - Role & signature access enforcement is handled inside signDocument controller
+   - Admin / TechSales: unrestricted
+   - Customer / Department: controlled via document flags
+*/
+
 // routes/documents.js
 import express from "express";
 import { upload } from "../middleware/uploadMiddleware.js";
@@ -8,10 +15,15 @@ import {
   getDocumentVersions,
   deleteDocument,
   toggleDownload,
+  updateSignatureAccess,
   getRecycleBinDocuments,
   getCustomerRecycleBinDocuments,
   restoreDocument,
-  requestRestoreItem, // ✅ NEW
+  requestRestoreItem,
+  signDocument,
+  approveDocument,
+  rejectDocument,
+  getSignatureAccess,
 } from "../controllers/documentController.js";
 
 import {
@@ -34,7 +46,7 @@ const router = express.Router();
 router.get("/count", authMiddleware, async (req, res) => {
   try {
     const result = await pool.query(
-      "SELECT COUNT(*) FROM documents WHERE deleted_at IS NULL"
+      "SELECT COUNT(*) FROM documents WHERE deleted_at IS NULL",
     );
 
     res.json({ count: parseInt(result.rows[0].count) });
@@ -47,7 +59,26 @@ router.get("/count", authMiddleware, async (req, res) => {
 /* ============================================================================
    UPLOAD DOCUMENT (always creates new version)
 ============================================================================ */
-router.post("/upload", authMiddleware, upload.single("file"), uploadDocument);
+router.post(
+  "/upload",
+  authMiddleware,
+  upload.array("files", 20),
+  uploadDocument,
+);
+
+/* =====================================================================
+   UPDATE SIGNATURE ACCESS (ADMIN / TECHSALES)
+===================================================================== */
+router.patch(
+  "/:documentId/signature-access",
+  authMiddleware,
+  authorizeResource,
+  requireAdminOrTechSales,
+  (req, res) => {
+    req.params.documentId = req.params.documentId.trim();
+    updateSignatureAccess(req, res);
+  },
+);
 
 /* ============================================================================
    TOGGLE DOWNLOAD (ADMIN)
@@ -60,7 +91,7 @@ router.patch(
   (req, res) => {
     req.params.documentId = req.params.documentId.trim();
     toggleDownload(req, res);
-  }
+  },
 );
 
 /* ============================================================================
@@ -73,7 +104,7 @@ router.get(
   (req, res) => {
     req.params.folderId = req.params.folderId.trim();
     getDocumentsByFolder(req, res);
-  }
+  },
 );
 
 /* ============================================================================
@@ -86,7 +117,7 @@ router.get(
   (req, res) => {
     req.params.documentId = req.params.documentId.trim();
     getDocumentVersions(req, res);
-  }
+  },
 );
 
 /* ============================================================================
@@ -99,7 +130,7 @@ router.delete(
   (req, res) => {
     req.params.documentId = req.params.documentId.trim();
     deleteDocument(req, res);
-  }
+  },
 );
 
 /* ============================================================================
@@ -112,7 +143,7 @@ router.post(
   (req, res) => {
     req.params.documentId = req.params.documentId.trim();
     commentsController.addComment(req, res);
-  }
+  },
 );
 
 router.get(
@@ -122,23 +153,99 @@ router.get(
   (req, res) => {
     req.params.documentId = req.params.documentId.trim();
     commentsController.getComments(req, res);
-  }
+  },
 );
 
 /* ============================================================================
    DOWNLOAD FILE (RESPECT can_download FLAG)
 ============================================================================ */
+// router.get(
+//   "/download/:versionId",
+//   authMiddleware,
+//   authorizeResource,
+//   async (req, res) => {
+//     const versionId = req.params.versionId.trim();
+//     console.log("⬇️ Download request:", {
+//       versionId,
+//       user: req.user.id,
+//       role: req.user.role,
+//     });
+//     const userRole = req.user.role;
+
+//     try {
+//       const q = await pool.query(
+//         `
+//         SELECT
+//           d.can_download,
+//           dv.file_path
+//         FROM document_versions dv
+//         JOIN documents d
+//           ON d.id = dv.document_id
+//         WHERE dv.id = $1
+//           AND d.deleted_at IS NULL
+//         `,
+//         [versionId],
+//       );
+
+//       if (q.rowCount === 0) {
+//         return res.status(404).json({ message: "File not found" });
+//       }
+
+//       const { can_download, file_path } = q.rows[0];
+
+//       // 🚫 Restrict customer download
+//       if (!can_download && userRole === "customer") {
+//         return res.status(403).json({ message: "Download disabled by admin" });
+//       }
+
+//       const __filename = fileURLToPath(import.meta.url);
+//       const __dirname = path.dirname(__filename);
+
+//       const absolutePath = path.join(__dirname, "..", file_path);
+
+//       const originalRes = await pool.query(
+//         `SELECT original_filename FROM document_versions WHERE id=$1`,
+//         [versionId],
+//       );
+
+//       const originalName = originalRes.rows[0]?.original_filename || "file.pdf";
+
+//       res.setHeader(
+//         "Content-Disposition",
+//         `attachment; filename="${originalName}"`,
+//       );
+
+//       return res.download(absolutePath);
+//     } catch (err) {
+//       console.error("Download Error:", err);
+//       res.status(500).json({ message: "Server error" });
+//     }
+//   },
+// );
+
 router.get(
   "/download/:versionId",
   authMiddleware,
+
+  // ✅ ADD THIS SMALL MIDDLEWARE
+  (req, _res, next) => {
+    if (req.params.versionId) {
+      req.params.versionId = req.params.versionId.trim();
+    }
+    next();
+  },
+
   authorizeResource,
+
   async (req, res) => {
-    const versionId = req.params.versionId.trim();
+    const versionId = req.params.versionId;
+
     console.log("⬇️ Download request:", {
       versionId,
       user: req.user.id,
       role: req.user.role,
     });
+
     const userRole = req.user.role;
 
     try {
@@ -150,10 +257,10 @@ router.get(
         FROM document_versions dv
         JOIN documents d 
           ON d.id = dv.document_id
+         AND d.deleted_at IS NULL
         WHERE dv.id = $1
-          AND d.deleted_at IS NULL
         `,
-        [versionId]
+        [versionId],
       );
 
       if (q.rowCount === 0) {
@@ -169,19 +276,18 @@ router.get(
 
       const __filename = fileURLToPath(import.meta.url);
       const __dirname = path.dirname(__filename);
-
       const absolutePath = path.join(__dirname, "..", file_path);
 
       const originalRes = await pool.query(
         `SELECT original_filename FROM document_versions WHERE id=$1`,
-        [versionId]
+        [versionId],
       );
 
       const originalName = originalRes.rows[0]?.original_filename || "file.pdf";
 
       res.setHeader(
         "Content-Disposition",
-        `attachment; filename="${originalName}"`
+        `attachment; filename="${originalName}"`,
       );
 
       return res.download(absolutePath);
@@ -189,7 +295,7 @@ router.get(
       console.error("Download Error:", err);
       res.status(500).json({ message: "Server error" });
     }
-  }
+  },
 );
 
 /* ============================================================================
@@ -199,7 +305,7 @@ router.get(
   "/recycle-bin",
   authMiddleware,
   requireAdminOrTechSales,
-  getRecycleBinDocuments
+  getRecycleBinDocuments,
 );
 
 /* =====================================================================
@@ -208,7 +314,7 @@ router.get(
 router.get(
   "/recycle-bin/customer",
   authMiddleware,
-  getCustomerRecycleBinDocuments
+  getCustomerRecycleBinDocuments,
 );
 
 /* ============================================================================
@@ -226,7 +332,58 @@ router.post(
   (req, res) => {
     req.params.documentId = req.params.documentId.trim();
     restoreDocument(req, res);
-  }
+  },
+);
+
+/* ============================================================================
+   SIGN DOCUMENT (Drawn Signature → New Version)
+============================================================================ */
+router.post(
+  "/:documentId/sign",
+  authMiddleware,
+  authorizeResource,
+  (req, res) => {
+    req.params.documentId = req.params.documentId.trim();
+    signDocument(req, res);
+  },
+);
+
+/* ============================================================================ 
+   REVIEW ACTIONS (Admin / TechSales)
+============================================================================ */
+router.post(
+  "/:documentId/approve",
+  authMiddleware,
+  authorizeResource,
+  requireAdminOrTechSales,
+  (req, res) => {
+    req.params.documentId = req.params.documentId.trim();
+    approveDocument(req, res);
+  },
+);
+
+router.post(
+  "/:documentId/reject",
+  authMiddleware,
+  authorizeResource,
+  requireAdminOrTechSales,
+  (req, res) => {
+    req.params.documentId = req.params.documentId.trim();
+    rejectDocument(req, res);
+  },
+);
+
+/* =====================================================================
+   GET SIGNATURE ACCESS (Polling)
+===================================================================== */
+router.get(
+  "/:documentId/signature-access",
+  authMiddleware,
+  authorizeResource,
+  (req, res) => {
+    req.params.documentId = req.params.documentId.trim();
+    getSignatureAccess(req, res);
+  },
 );
 
 export default router;

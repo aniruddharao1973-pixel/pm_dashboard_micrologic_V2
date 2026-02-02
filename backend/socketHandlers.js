@@ -31,6 +31,19 @@ export function registerSocketHandlers(io) {
     });
 
     /*
+     * JOIN NOTIFICATION ROOM (USER-SCOPED)
+     * Used for real-time notifications
+     */
+    socket.on("join_notifications", ({ userId, role }) => {
+      if (!userId || !role) return;
+
+      const room = `notifications_${role}_${userId}`;
+      socket.join(room);
+
+      // console.log(`🔔 User joined notification room: ${room}`);
+    });
+
+    /*
      * LEAVE DOCUMENT ROOM
      */
     socket.on("leave_document", ({ documentId, userId }) => {

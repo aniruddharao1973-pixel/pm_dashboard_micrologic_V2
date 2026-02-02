@@ -87,6 +87,7 @@ import {
   getAllDeletedFolders,
   getCustomerRecycleBinFolders,
   getAllFoldersForAccessControl,
+  getFolderAccessSnapshot,
 } from "../controllers/foldersController.js";
 
 const router = express.Router();
@@ -96,7 +97,7 @@ const router = express.Router();
 ========================= */
 router.get("/count", authMiddleware, async (req, res) => {
   const result = await pool.query(
-    "SELECT COUNT(*) FROM folders WHERE deleted_at IS NULL"
+    "SELECT COUNT(*) FROM folders WHERE deleted_at IS NULL",
   );
   res.json({ count: parseInt(result.rows[0].count) });
 });
@@ -109,7 +110,7 @@ router.get("/count", authMiddleware, async (req, res) => {
 router.get(
   "/recycle-bin/customer",
   authMiddleware,
-  getCustomerRecycleBinFolders
+  getCustomerRecycleBinFolders,
 );
 
 // ADMIN / TECHSALES — ALL deleted folders (global)
@@ -117,7 +118,7 @@ router.get(
   "/recycle-bin",
   authMiddleware,
   authorizeResource,
-  getAllDeletedFolders
+  getAllDeletedFolders,
 );
 
 // ADMIN / TECHSALES — deleted folders by project
@@ -125,7 +126,7 @@ router.get(
   "/recycle-bin/:projectId",
   authMiddleware,
   authorizeResource,
-  getDeletedFoldersByProject
+  getDeletedFoldersByProject,
 );
 
 /* =========================
@@ -137,7 +138,7 @@ router.get(
   "/project/:projectId/access-control",
   authMiddleware,
   authorizeResource,
-  getAllFoldersForAccessControl
+  getAllFoldersForAccessControl,
 );
 
 // CUSTOMER — visible folders only
@@ -145,7 +146,7 @@ router.get(
   "/project/:projectId/customer-access",
   authMiddleware,
   authorizeResource,
-  getCustomerVisibleFolders
+  getCustomerVisibleFolders,
 );
 
 /* =========================
@@ -167,7 +168,7 @@ router.get(
   "/:projectId",
   authMiddleware,
   authorizeResource,
-  getFoldersByProject
+  getFoldersByProject,
 );
 
 /* =========================
@@ -179,7 +180,7 @@ router.put(
   "/:folderId/permissions",
   authMiddleware,
   authorizeResource,
-  updateFolderPermissions
+  updateFolderPermissions,
 );
 
 // Create root folder
@@ -190,7 +191,7 @@ router.post(
   "/:parentId/subfolder",
   authMiddleware,
   authorizeResource,
-  createSubFolder
+  createSubFolder,
 );
 
 // Delete folder (soft delete)
@@ -201,7 +202,15 @@ router.post(
   "/:folderId/restore",
   authMiddleware,
   authorizeResource,
-  restoreFolder
+  restoreFolder,
+);
+
+// ⭐ Folder access snapshot (polling)
+router.get(
+  "/project/:projectId/access-snapshot",
+  authMiddleware,
+  authorizeResource,
+  getFolderAccessSnapshot,
 );
 
 export default router;

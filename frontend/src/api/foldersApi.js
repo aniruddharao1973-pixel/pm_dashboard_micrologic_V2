@@ -137,6 +137,11 @@ export const useFoldersApi = () => {
     return api.delete(`/folders/${folderId}`);
   };
 
+  // ⭐ Folder access snapshot (polling)
+  const getFolderAccessSnapshot = (projectId) => {
+    return api.get(`/folders/project/${projectId}/access-snapshot`);
+  };
+
   return {
     createFolder,
     createSubFolder,
@@ -144,7 +149,8 @@ export const useFoldersApi = () => {
     getSubFolders,
     getFolderById,
 
-    getAllFoldersForAccessControl, // ✅ ADD THIS
+    getAllFoldersForAccessControl,
+    getFolderAccessSnapshot,
 
     getAllDeletedFolders,
     getDeletedFoldersByProject,

@@ -12,7 +12,7 @@ const __dirname = path.dirname(__filename);
 // Path to logo in your repo (same as before)
 const logoPath = path.resolve(
   __dirname,
-  "../../frontend/public/Micrologic_new_logo.png"
+  "../../frontend/public/Micrologic_new_logo.png",
 );
 
 // Token endpoint
@@ -50,7 +50,7 @@ async function getAccessToken() {
   } catch (err) {
     console.error(
       "Failed to get access token:",
-      err.response ? err.response.data : err.message
+      err.response ? err.response.data : err.message,
     );
     throw err;
   }
@@ -126,7 +126,7 @@ async function graphSendMail({
   } catch (err) {
     console.error(
       "graphSendMail failed:",
-      err.response ? err.response.data : err.message
+      err.response ? err.response.data : err.message,
     );
     throw err;
   }
@@ -161,6 +161,240 @@ async function buildInlineLogoAttachment() {
   }
 }
 
+/* =================== 👉 PASTE START HERE =================== */
+
+export async function sendFileReviewRequestEmail({
+  toEmail,
+  fileName,
+  folderName,
+  projectName,
+  submittedBy,
+}) {
+  const logoAttachment = await buildInlineLogoAttachment();
+  const html = `
+    <div style="font-family: -apple-system, 'Segoe UI', Roboto, Arial; padding:20px;">
+      <h2>📥 File pending review</h2>
+      <p><strong>${fileName}</strong> was uploaded and marked for review.</p>
+      <p><strong>Project:</strong> ${projectName}</p>
+      <p><strong>Folder:</strong> ${folderName}</p>
+      <p><strong>Submitted by:</strong> ${submittedBy}</p>
+      <p>Please go to the PM Dashboard to review and approve/reject the file.</p>
+      <p><a href="${process.env.FRONTEND_URL}">Open PM Dashboard</a></p>
+    </div>
+  `;
+
+  const attachments = [];
+  if (logoAttachment) attachments.push(logoAttachment);
+
+  await graphSendMail({
+    subject: `File pending review: ${fileName}`,
+    htmlBody: html,
+    toRecipients: [toEmail],
+    attachments,
+  });
+}
+
+export async function sendFileRejectedEmail({
+  toEmail,
+  fileName,
+  folderName,
+  projectName,
+  rejectComment,
+  departmentName,
+}) {
+  const logoAttachment = await buildInlineLogoAttachment();
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Document Rejected</title>
+
+<style>
+  body {
+    margin: 0;
+    padding: 20px;
+    background: #f3f4f6;
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+  }
+
+  .container {
+    max-width: 700px;
+    margin: auto;
+    background: white;
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.12);
+  }
+
+  .header {
+    background: linear-gradient(135deg, #ef4444, #b91c1c);
+    color: white;
+    text-align: center;
+    padding: 36px 24px;
+  }
+
+  .logo {
+    width: 200px;
+    margin-bottom: 12px;
+  }
+
+  .header h1 {
+    margin: 10px 0 4px;
+    font-size: 24px;
+  }
+
+  .content {
+    padding: 28px;
+  }
+
+  .card {
+    background: #fef2f2;
+    border-left: 5px solid #ef4444;
+    border-radius: 12px;
+    padding: 22px;
+    margin-bottom: 22px;
+  }
+
+  .file-name {
+    font-size: 18px;
+    font-weight: 700;
+    color: #7f1d1d;
+    margin-bottom: 16px;
+  }
+
+  .label {
+    font-size: 12px;
+    text-transform: uppercase;
+    color: #6b7280;
+    margin-top: 8px;
+  }
+
+  .value {
+    font-size: 15px;
+    font-weight: 600;
+    color: #111827;
+    margin-bottom: 10px;
+  }
+
+  .reason-box {
+    background: white;
+    border: 1px dashed #f87171;
+    padding: 14px;
+    border-radius: 10px;
+    margin-top: 10px;
+    font-size: 14px;
+    color: #7f1d1d;
+  }
+
+  .badge {
+    display: inline-block;
+    background: #fee2e2;
+    color: #7f1d1d;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    margin-top: 8px;
+  }
+
+  .button {
+    display: inline-block;
+    margin-top: 20px;
+    padding: 12px 28px;
+    background: linear-gradient(135deg,#ef4444,#b91c1c);
+    color: white !important;
+    text-decoration: none;
+    border-radius: 10px;
+    font-weight: 700;
+  }
+
+  .footer {
+    text-align: center;
+    padding: 22px;
+    background: #f9fafb;
+    border-top: 1px solid #e5e7eb;
+    font-size: 13px;
+    color: #6b7280;
+  }
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <div class="header">
+    <img src="cid:app_logo" class="logo" alt="Micrologic" />
+    <h1>Document Rejected</h1>
+    <p>Department Action Required</p>
+  </div>
+
+  <div class="content">
+
+    <div class="card">
+      <div class="file-name">${fileName}</div>
+
+      <div class="label">Project</div>
+      <div class="value">${projectName}</div>
+
+      <div class="label">Folder</div>
+      <div class="value">${folderName}</div>
+
+      <div class="label">Department</div>
+      <div class="value">${departmentName}</div>
+
+      <div class="badge">Correction Required</div>
+
+      <div class="label">Reviewer Comment</div>
+      <div class="reason-box">
+        ${rejectComment}
+      </div>
+    </div>
+
+    <p>
+      Please review the above comments carefully and upload a corrected version of the document.
+      The file will remain in department area until it is approved.
+    </p>
+
+    <div style="text-align:center;">
+      <a href="${process.env.FRONTEND_URL}" class="button">
+        Upload Corrected File
+      </a>
+    </div>
+
+  </div>
+
+  <div class="footer">
+
+    <div style="margin-bottom:10px;">
+      <img src="cid:app_logo" style="width:150px;" />
+    </div>
+
+    This is an automated department notification. Please do not reply.<br/>
+    © ${new Date().getFullYear()} PM Dashboard – Powered by Micrologic
+  </div>
+
+</div>
+
+</body>
+</html>
+`;
+
+  const attachments = [];
+  if (logoAttachment) attachments.push(logoAttachment);
+
+  await graphSendMail({
+    subject: `Document Rejected: ${fileName}`,
+    htmlBody: html,
+    toRecipients: [toEmail],
+    attachments,
+  });
+}
+
 /* ============================================================
    Email templates (your existing HTML bodies) - unchanged
    I kept them identical but removed nodemailer-specific cid usage
@@ -184,7 +418,13 @@ function getGreeting() {
    sendCustomerCredentials
    - toEmail, name, tempPassword
 ============================================================ */
-export async function sendCustomerCredentials({ toEmail, name, tempPassword }) {
+// mailService.js
+export async function sendCustomerCredentials({
+  toEmail,
+  name,
+  tempPassword,
+  accountType = "account", // 👈 default
+}) {
   const greeting = getGreeting();
   const logoAttachment = await buildInlineLogoAttachment();
 
@@ -285,7 +525,7 @@ export async function sendCustomerCredentials({ toEmail, name, tempPassword }) {
                 font-size: 16px;
                 line-height: 1.6;
               ">
-                ${greeting}, your account has been successfully created. Get started by logging in with your credentials below.
+                ${greeting}, your <strong>${accountType}</strong> has been successfully created. Get started by logging in with your credentials below.
               </p>
             </div>
 
@@ -701,7 +941,7 @@ export async function sendFileUploadedEmail({
     </div>
 
     This is an automated notification. Please do not reply.<br>
-    © 2025 PM Dashboard. All rights reserved.
+    © 2026 PM Dashboard Micrologic. All rights reserved.
 
   </div>
 
@@ -861,7 +1101,7 @@ export async function sendFileDeletedEmail({
     </div>
 
     This is an automated notification. Please do not reply.<br>
-    © 2025 PM Dashboard. All rights reserved.
+    © 2026 PM Dashboard Micrologic. All rights reserved.
 
   </div>
 
@@ -1207,5 +1447,191 @@ If you did not request this, please ignore this email.
 
 PM Dashboard`,
     toRecipients: [toEmail],
+  });
+}
+
+export async function sendFileApprovedEmail({
+  toEmail,
+  fileName,
+  folderName,
+  projectName,
+  approvedBy,
+}) {
+  const logoAttachment = await buildInlineLogoAttachment();
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Document Approved</title>
+
+<style>
+  body {
+    margin: 0;
+    padding: 20px;
+    background: #f3f4f6;
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+  }
+
+  .container {
+    max-width: 700px;
+    margin: auto;
+    background: white;
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.12);
+  }
+
+  .header {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+    text-align: center;
+    padding: 36px 24px;
+  }
+
+  .logo {
+    width: 200px;
+    margin-bottom: 12px;
+  }
+
+  .header h1 {
+    margin: 10px 0 4px;
+    font-size: 24px;
+    letter-spacing: 0.3px;
+  }
+
+  .content {
+    padding: 28px;
+  }
+
+  .card {
+    background: #ecfdf5;
+    border-left: 5px solid #10b981;
+    border-radius: 12px;
+    padding: 22px;
+    margin-bottom: 22px;
+  }
+
+  .file-name {
+    font-size: 18px;
+    font-weight: 700;
+    color: #064e3b;
+    margin-bottom: 16px;
+  }
+
+  .label {
+    font-size: 12px;
+    text-transform: uppercase;
+    color: #6b7280;
+    margin-top: 8px;
+  }
+
+  .value {
+    font-size: 15px;
+    font-weight: 600;
+    color: #111827;
+    margin-bottom: 10px;
+  }
+
+  .badge {
+    display: inline-block;
+    background: #d1fae5;
+    color: #065f46;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    margin-top: 8px;
+  }
+
+  .button {
+    display: inline-block;
+    margin-top: 20px;
+    padding: 12px 28px;
+    background: linear-gradient(135deg,#10b981,#059669);
+    color: white !important;
+    text-decoration: none;
+    border-radius: 10px;
+    font-weight: 700;
+  }
+
+  .footer {
+    text-align: center;
+    padding: 22px;
+    background: #f9fafb;
+    border-top: 1px solid #e5e7eb;
+    font-size: 13px;
+    color: #6b7280;
+  }
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <div class="header">
+    <img src="cid:app_logo" class="logo" alt="Micrologic" />
+    <h1>Document Approved</h1>
+    <p>Department Notification</p>
+  </div>
+
+  <div class="content">
+
+    <div class="card">
+      <div class="file-name">${fileName}</div>
+
+      <div class="label">Project</div>
+      <div class="value">${projectName}</div>
+
+      <div class="label">Folder</div>
+      <div class="value">${folderName}</div>
+
+      <div class="label">Approved By</div>
+      <div class="value">${approvedBy}</div>
+
+      <div class="badge">Released to Customer Portal</div>
+    </div>
+
+    <p>
+      The above document uploaded by your department has been successfully reviewed and approved.  
+      It is now visible to the customer in the PM Dashboard.
+    </p>
+
+    <div style="text-align:center;">
+      <a href="${process.env.FRONTEND_URL}" class="button">
+        Open PM Dashboard
+      </a>
+    </div>
+
+  </div>
+
+  <div class="footer">
+
+    <div style="margin-bottom:10px;">
+      <img src="cid:app_logo" style="width:150px;" />
+    </div>
+
+    This is an automated department notification. Please do not reply.<br/>
+    © ${new Date().getFullYear()} PM Dashboard – Powered by Micrologic
+  </div>
+
+</div>
+
+</body>
+</html>
+`;
+
+  const attachments = [];
+  if (logoAttachment) attachments.push(logoAttachment);
+
+  await graphSendMail({
+    subject: `Document Approved: ${fileName}`,
+    htmlBody: html,
+    toRecipients: [toEmail],
+    attachments,
   });
 }

@@ -133,6 +133,22 @@ export function connectSocket(token) {
   }
 }
 
+/**
+ * Join notification room (user scoped)
+ */
+// export function joinNotificationRoom(user, token) {
+//   if (!user?.id || !user?.role) return;
+
+//   if (!socket.connected) {
+//     connectSocket(token);
+//   }
+
+//   socket.emit("join_notifications", {
+//     userId: user.id,
+//     role: user.role,
+//   });
+// }
+
 export function joinDocumentRoom(documentId, user, token) {
   if (!socket.connected) connectSocket(token);
 
@@ -184,8 +200,69 @@ export function sendSeen(documentId, messageId, user) {
   });
 }
 
+/**
+ * Listen for real-time notifications
+ * (safe against duplicate listeners in React)
+ */
+export function onNotification(callback) {
+  if (typeof callback !== "function") return;
+
+  const handler = (payload) => callback(payload);
+
+  socket.off("notification:new", handler);
+  socket.on("notification:new", handler);
+
+  return () => {
+    socket.off("notification:new", handler);
+  };
+}
+
 export function disconnectSocket() {
   if (socket.connected) socket.disconnect();
+}
+
+// export function ensureNotificationRoom(user) {
+//   if (!user?.id || !user?.role) return;
+
+//   socket.emit("join_notifications", {
+//     userId: user.id,
+//     role: user.role,
+//   });
+// }
+
+/**
+ * Auto rejoin notification room on every reconnect
+ */
+export function attachNotificationAutoJoin(user) {
+  if (!user?.id || !user?.role) return;
+
+  const join = () => {
+    socket.emit("join_notifications", {
+      userId: user.id,
+      role: user.role,
+    });
+  };
+
+  socket.off("connect", join);
+  socket.on("connect", join);
+
+  // join immediately if already connected
+  if (socket.connected) join();
+}
+
+/**
+ * Ensure socket is connected from any entry point (Header, Chat, etc.)
+ * Safe to call multiple times
+ * Does NOT interfere with chat rooms
+ */
+export function ensureSocketConnected(token) {
+  if (socket.connected) return;
+
+  if (token) {
+    socket.auth = { token };
+  }
+
+  socket.connect();
 }
 
 export default socket;

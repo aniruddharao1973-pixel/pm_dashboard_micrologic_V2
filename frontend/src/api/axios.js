@@ -21,8 +21,12 @@ export const useAxios = () => {
   const { token, logout, login, user } = useContext(AuthContext);
 
   const instance = axios.create({
-    baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api",
-    withCredentials: true,
+    baseURL:
+      import.meta.env.VITE_API_BASE_URL ||
+      `${window.location.protocol}//${window.location.hostname}:5000/api`,
+
+    withCredentials: false,
+
     // any other defaults...
   });
 
@@ -50,7 +54,7 @@ export const useAxios = () => {
 
       return config;
     },
-    (error) => Promise.reject(error)
+    (error) => Promise.reject(error),
   );
 
   /* ---------------------------------------------------------
@@ -78,59 +82,62 @@ export const useAxios = () => {
       //   return Promise.reject(error);
       // }
 
-      instance.interceptors.response.use(
-        (response) => response,
-        async (error) => {
-          const originalRequest = error?.config;
-          const status = error?.response?.status;
+      // instance.interceptors.response.use(
+      //   (response) => response,
+      //   async (error) => {
+      //     const originalRequest = error?.config;
+      //     const status = error?.response?.status;
 
-          // 🔴 FIXED 403 HANDLING
-          if (status === 403) {
-            const code = error?.response?.data?.code;
+      //     // 🔴 FIXED 403 HANDLING
+      //     if (status === 403) {
+      //       const code = error?.response?.data?.code;
 
-            // Hard security violation → Forbidden page
-            if (!code) {
-              try {
-                window.location.replace("/forbidden");
-              } catch (e) {
-                window.location.href = "/forbidden";
-              }
-              return Promise.reject(error);
-            }
+      //       // Hard security violation → Forbidden page
+      //       if (!code) {
+      //         try {
+      //           window.location.replace("/forbidden");
+      //         } catch (e) {
+      //           window.location.href = "/forbidden";
+      //         }
+      //         return Promise.reject(error);
+      //       }
 
-            // Business rule (permission revoked, etc.) → UI toast
-            if (code === "UPLOAD_PERMISSION_REVOKED") {
-              return Promise.reject(error);
-            }
-          }
+      //       // Business rule (permission revoked, etc.) → UI toast
+      //       if (code === "UPLOAD_PERMISSION_REVOKED") {
+      //         return Promise.reject(error);
+      //       }
+      //     }
 
-          // 401 → silent refresh
-          if (status === 401 && originalRequest && !originalRequest._retry) {
-            originalRequest._retry = true;
-            try {
-              const refreshRes = await axios.post(
-                (import.meta.env.VITE_API_BASE_URL || "http://localhost:5000") +
-                  "/api/auth/refresh",
-                { token },
-                { withCredentials: true }
-              );
+      //     // 401 → silent refresh
+      //     if (status === 401 && originalRequest && !originalRequest._retry) {
+      //       originalRequest._retry = true;
+      //       try {
+      //         const refreshRes = await axios.post(
+      //           (import.meta.env.VITE_API_BASE_URL ||
+      //             `${window.location.protocol}//${window.location.hostname}:5000`) +
+      //             "/api/auth/refresh",
 
-              const newToken = refreshRes?.data?.token;
-              if (newToken) {
-                login(user, newToken);
-                originalRequest.headers = originalRequest.headers || {};
-                originalRequest.headers.Authorization = `Bearer ${newToken}`;
-                return instance(originalRequest);
-              }
-            } catch (refreshError) {
-              console.warn("🔁 Silent refresh failed.", refreshError);
-              return Promise.reject(error);
-            }
-          }
+      //           { token },
+      //           undefined
 
-          return Promise.reject(error);
-        }
-      );
+      //         );
+
+      //         const newToken = refreshRes?.data?.token;
+      //         if (newToken) {
+      //           login(user, newToken);
+      //           originalRequest.headers = originalRequest.headers || {};
+      //           originalRequest.headers.Authorization = `Bearer ${newToken}`;
+      //           return instance(originalRequest);
+      //         }
+      //       } catch (refreshError) {
+      //         console.warn("🔁 Silent refresh failed.", refreshError);
+      //         return Promise.reject(error);
+      //       }
+      //     }
+
+      //     return Promise.reject(error);
+      //   },
+      // );
 
       // 401 => token expired / unauthorized. Try silent refresh (only once per failed request).
       if (status === 401 && originalRequest && !originalRequest._retry) {
@@ -138,10 +145,13 @@ export const useAxios = () => {
         try {
           // call backend refresh endpoint with current token (server implementation from your backend)
           const refreshRes = await axios.post(
-            (import.meta.env.VITE_API_BASE_URL || "http://localhost:5000") +
+            (import.meta.env.VITE_API_BASE_URL ||
+              `${window.location.protocol}//${window.location.hostname}:5000`) +
               "/api/auth/refresh",
+
             { token },
-            { withCredentials: true }
+            undefined
+
           );
 
           const newToken = refreshRes?.data?.token;
@@ -170,7 +180,7 @@ export const useAxios = () => {
 
       // All other errors -> propagate
       return Promise.reject(error);
-    }
+    },
   );
 
   return instance;

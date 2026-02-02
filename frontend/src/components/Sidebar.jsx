@@ -1,11 +1,17 @@
 // src/components/Sidebar.jsx
 import React from "react";
-import { NavLink, useParams } from "react-router-dom";
-import { useAuth } from "../hooks/useAuth";
+import { NavLink, useParams, useLocation } from "react-router-dom";
 
-const Sidebar = ({ sidebarOpen, onClose }) => {
-  const { user, isAdminLike } = useAuth();
-  const { projectId } = useParams();
+import { useAuth } from "../hooks/useAuth";
+import { toast } from "react-toastify";
+
+const Sidebar = ({ sidebarContext, sidebarOpen, onClose }) => {
+  const { user, isAdminLike, setSidebarContext } = useAuth();
+  const { projectId: paramProjectId } = useParams();
+  const location = useLocation();
+
+  const resolvedProjectId =
+    paramProjectId || location.pathname.match(/projects\/([^/]+)/)?.[1] || null;
 
   // Used for link clicks and close button: do NOT prevent default so routing works.
   const handleClose = () => {
@@ -40,13 +46,7 @@ const Sidebar = ({ sidebarOpen, onClose }) => {
       color: "from-cyan-500 to-teal-500",
       dotColor: "bg-cyan-400",
     },
-    // {
-    //   name: "Create Customer",
-    //   path: "/admin/create-customer",
-    //   icon: "➕",
-    //   color: "from-green-500 to-green-600",
-    //   dotColor: "bg-green-400",
-    // },
+
     {
       name: "Customer List",
       path: "/admin/customers",
@@ -98,7 +98,80 @@ const Sidebar = ({ sidebarOpen, onClose }) => {
     },
   ];
 
-  const menu = isAdminLike ? adminMenu : customerMenu;
+  const teamsMenu = [
+    {
+      name: "Teams Dashboard",
+      path: "/teams",
+      icon: "🏢",
+      color: "from-emerald-500 to-green-600",
+      dotColor: "bg-emerald-400",
+    },
+    {
+      name: "Departments",
+      path: "/teams/departments",
+      icon: "👥",
+      color: "from-cyan-500 to-blue-500",
+      dotColor: "bg-cyan-400",
+    },
+
+    {
+      name: "Department Folder Access",
+      path: "#",
+      icon: "🔐",
+      color: "from-emerald-500 to-teal-600",
+      dotColor: "bg-emerald-400",
+      action: "open-department-folder-access",
+    },
+    // {
+    //   name: "Recycle Bin",
+    //   path: "/teams/recycle-bin",
+    //   icon: "♻️",
+    //   color: "from-red-500 to-rose-600",
+    //   dotColor: "bg-red-400",
+    // },
+
+    {
+      name: "Recycle Bin",
+      path: "/recycle-bin",
+      icon: "♻️",
+      color: "from-red-500 to-rose-600",
+      dotColor: "bg-red-400",
+    },
+  ];
+
+  const departmentMenu = [
+    {
+      name: "Dashboard",
+      path: "/department/dashboard",
+      icon: "📊",
+      color: "from-blue-500 to-blue-600",
+      dotColor: "bg-blue-400",
+    },
+    {
+      name: "Projects",
+      path: "/projects",
+      icon: "📁",
+      color: "from-cyan-500 to-teal-500",
+      dotColor: "bg-cyan-400",
+    },
+    {
+      name: "Recycle Bin",
+      path: "/department/recycle-bin",
+      icon: "♻️",
+      color: "from-red-500 to-rose-600",
+      dotColor: "bg-red-400",
+    },
+  ];
+
+  let menu;
+
+  if (user?.role === "department") {
+    menu = departmentMenu;
+  } else if (sidebarContext === "teams") {
+    menu = teamsMenu;
+  } else {
+    menu = isAdminLike ? adminMenu : customerMenu;
+  }
 
   return (
     <>
@@ -204,19 +277,63 @@ const Sidebar = ({ sidebarOpen, onClose }) => {
           </span>
         </div>
 
+        {isAdminLike && user?.role !== "department" && (
+          <div
+            role="tablist"
+            aria-label="Sidebar context"
+            className="mb-4 inline-flex gap-3"
+          >
+            {[
+              { key: "main", label: "Main" },
+              { key: "teams", label: "Teams" },
+            ].map((seg) => {
+              const active = sidebarContext === seg.key;
+              return (
+                <button
+                  key={seg.key}
+                  role="tab"
+                  aria-pressed={active}
+                  onClick={() => setSidebarContext(seg.key)}
+                  className={`
+            px-6 py-3 rounded-2xl text-xs sm:text-sm font-semibold
+            focus:outline-none focus-visible:ring-2 focus-visible:ring-white/30
+            transition-all duration-300
+            ${
+              active
+                ? "bg-white/20 backdrop-blur-xl text-white shadow-2xl shadow-white/10 border border-white/30 scale-105"
+                : "bg-white/5 backdrop-blur-md text-white/70 hover:bg-white/10 border border-white/10"
+            }
+          `}
+                >
+                  {seg.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
         {/* Navigation */}
         <nav className="flex flex-col gap-1.5 sm:gap-2 relative z-20">
           {menu.map((item, index) =>
-            item.action === "open-folder-access" ? (
+            item.action?.startsWith("open-") ? (
               <button
                 key={item.name}
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
+
+                  // if (!resolvedProjectId) {
+                  //   toast.error("Open a project first");
+                  //   return;
+                  // }
+                  const eventName =
+                    sidebarContext === "teams"
+                      ? "open-department-folder-access-control"
+                      : "open-folder-access-control";
+
                   window.dispatchEvent(
-                    new CustomEvent("open-folder-access-control", {
-                      detail: { projectId },
-                    })
+                    new CustomEvent(eventName, {
+                      detail: { projectId: resolvedProjectId },
+                    }),
                   );
 
                   handleClose();
@@ -264,6 +381,7 @@ const Sidebar = ({ sidebarOpen, onClose }) => {
               <NavLink
                 key={item.name}
                 to={item.path}
+                end={item.path === "/teams"} // 👈 ADD THIS
                 onClick={handleClose}
                 style={{
                   animationDelay: `${index * 50}ms`,
@@ -338,7 +456,7 @@ const Sidebar = ({ sidebarOpen, onClose }) => {
                   </>
                 )}
               </NavLink>
-            )
+            ),
           )}
         </nav>
 

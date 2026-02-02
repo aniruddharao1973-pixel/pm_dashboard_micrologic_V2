@@ -389,7 +389,6 @@
 //   );
 // }
 
-
 // src/pages/admin/RecycleBin.jsx
 import React, { useEffect, useState } from "react";
 import {
@@ -478,7 +477,7 @@ export default function RecycleBin() {
 
   // Filter folders
   const filteredFolders = folders.filter((folder) =>
-    folder.name.toLowerCase().includes(searchQuery.toLowerCase())
+    folder.name.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   const handleConfirmRestore = async () => {
@@ -573,7 +572,7 @@ export default function RecycleBin() {
   const totalItems = documents.length + folders.length;
 
   return (
-    <div className="w-full h-screen flex flex-col bg-gradient-to-br from-gray-50 via-white to-gray-50 overflow-hidden">
+    <div className="w-full flex flex-col bg-gradient-to-br from-gray-50 via-white to-gray-50">
       {/* Header Section - Sticky and Responsive */}
       <div className="bg-white border-b border-gray-100 shadow-sm flex-shrink-0 relative z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-5">
@@ -723,14 +722,7 @@ export default function RecycleBin() {
 
       {/* ================= DESKTOP / TABLET VIEW (INNER SCROLL) ================= */}
       {/* Main Content Area - Natural scroll on mobile, inner scroll on desktop */}
-      <div
-        className="
-    flex-1
-    overflow-y-auto
-    sm:max-h-[calc(85vh-160px)]
-    min-h-0
-  "
-      >
+      <div>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6 lg:py-8 pb-20">
           {totalItems === 0 ? (
             /* Empty State - Responsive */
@@ -867,7 +859,7 @@ export default function RecycleBin() {
                                       </p>
                                       <p className="text-xs sm:text-sm font-medium text-gray-700">
                                         {new Date(
-                                          doc.deleted_at
+                                          doc.deleted_at,
                                         ).toLocaleDateString("en-US", {
                                           month: "short",
                                           day: "numeric",
@@ -1035,12 +1027,12 @@ export default function RecycleBin() {
                                         <div>
                                           <p className="text-xs sm:text-sm font-medium text-gray-700">
                                             {new Date(
-                                              folder.deleted_at
+                                              folder.deleted_at,
                                             ).toLocaleDateString()}
                                           </p>
                                           <p className="text-xs text-gray-500">
                                             {new Date(
-                                              folder.deleted_at
+                                              folder.deleted_at,
                                             ).toLocaleTimeString()}
                                           </p>
                                         </div>
@@ -1137,12 +1129,12 @@ export default function RecycleBin() {
                                 />
                                 <span>
                                   {new Date(
-                                    folder.deleted_at
+                                    folder.deleted_at,
                                   ).toLocaleDateString()}
                                 </span>
                                 <span>
                                   {new Date(
-                                    folder.deleted_at
+                                    folder.deleted_at,
                                   ).toLocaleTimeString()}
                                 </span>
                               </div>
@@ -1255,8 +1247,8 @@ export default function RecycleBin() {
           !selectedItem
             ? ""
             : selectedItem.type === "folder"
-            ? `Are you sure you want to restore "${selectedItem.data.name}"?\nAll subfolders will also be restored.`
-            : `Are you sure you want to restore "${selectedItem.data.title}"?\nThe customer will be notified automatically.`
+              ? `Are you sure you want to restore "${selectedItem.data.name}"?\nAll subfolders will also be restored.`
+              : `Are you sure you want to restore "${selectedItem.data.title}"?\nThe customer will be notified automatically.`
         }
         onConfirm={handleConfirmRestore}
         onCancel={() => {

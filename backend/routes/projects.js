@@ -4,6 +4,8 @@ import { authMiddleware } from "../middleware/authMiddleware.js";
 import {
   getMyProjects,
   getProjectById,
+  assignProjectToDepartment,
+  unassignProjectFromDepartment,
 } from "../controllers/projectController.js";
 import authorizeResource from "../middleware/authorizeResource.js";
 import { pool } from "../db.js";
@@ -29,10 +31,32 @@ router.get("/count", authMiddleware, async (req, res) => {
 router.get("/", authMiddleware, getMyProjects);
 
 /* ---------------------------------------------------
+   ⭐ API: Get projects for logged-in department
+--------------------------------------------------- */
+router.get("/department/:departmentId/projects", authMiddleware, getMyProjects);
+
+/* ---------------------------------------------------
    ⭐ API: Get single project by ID
    (Fixes FoldersPage 404 error and returns company_name)
 --------------------------------------------------- */
 
 router.get("/:projectId", authMiddleware, authorizeResource, getProjectById);
+
+/* ---------------------------------------------------
+   ⭐ Assign Project to Department
+--------------------------------------------------- */
+router.patch(
+  "/:projectId/assign-department",
+  authMiddleware,
+  authorizeResource,
+  assignProjectToDepartment
+);
+
+router.patch(
+  "/:projectId/unassign-department",
+  authMiddleware,
+  authorizeResource,
+  unassignProjectFromDepartment
+);
 
 export default router;

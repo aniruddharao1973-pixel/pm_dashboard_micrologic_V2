@@ -3,13 +3,15 @@ import React, { useEffect, useMemo, useState, useRef } from "react";
 import BaseModal from "./BaseModal";
 import { useAdminApi } from "../../api/adminApi";
 import { toast } from "react-toastify";
+import { useAuth } from "../../hooks/useAuth";
+
 import {
   Loader2,
   Building2,
   Hash,
   MapPin,
   User,
-  Phone,
+  // Phone,
   Calendar,
   Mail,
   Save,
@@ -56,10 +58,10 @@ const FormInput = ({
             hasError
               ? "bg-rose-50 border-rose-200 text-rose-500"
               : isValid
-              ? "bg-emerald-50 border-emerald-200 text-emerald-600"
-              : disabled
-              ? "bg-slate-100 border-slate-200 text-slate-400"
-              : "bg-slate-50 border-slate-200 text-slate-400 group-focus-within:bg-amber-50 group-focus-within:border-amber-200 group-focus-within:text-amber-600"
+                ? "bg-emerald-50 border-emerald-200 text-emerald-600"
+                : disabled
+                  ? "bg-slate-100 border-slate-200 text-slate-400"
+                  : "bg-slate-50 border-slate-200 text-slate-400 group-focus-within:bg-amber-50 group-focus-within:border-amber-200 group-focus-within:text-amber-600"
           }`}
         >
           <Icon className="w-4 h-4" />
@@ -75,10 +77,10 @@ const FormInput = ({
             hasError
               ? "border-rose-300 focus:border-rose-400 focus:ring-4 focus:ring-rose-100"
               : isValid
-              ? "border-emerald-300 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
-              : disabled
-              ? "bg-slate-50 border-slate-200 text-slate-500 cursor-not-allowed"
-              : "border-slate-200 hover:border-slate-300 focus:border-amber-500 focus:ring-4 focus:ring-amber-100"
+                ? "border-emerald-300 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
+                : disabled
+                  ? "bg-slate-50 border-slate-200 text-slate-500 cursor-not-allowed"
+                  : "border-slate-200 hover:border-slate-300 focus:border-amber-500 focus:ring-4 focus:ring-amber-100"
           }`}
         />
         {/* Status Icon */}
@@ -151,6 +153,7 @@ export default function EditCustomerModal({
   onSuccess,
 }) {
   const { getCustomer, updateCustomer, validateDuplicate } = useAdminApi();
+  const { user, setUser } = useAuth();
 
   const [form, setForm] = useState({
     name: "",
@@ -158,7 +161,7 @@ export default function EditCustomerModal({
     email: "", // ✅ ADD
     location: "",
     contactPerson: "",
-    contactPhone: "",
+    // contactPhone: "",
     registerDate: "",
   });
 
@@ -193,7 +196,7 @@ export default function EditCustomerModal({
           email: c.admin_email || "", // ✅ REQUIRED from backend
           location: c.location || "",
           contactPerson: c.contact_person || "",
-          contactPhone: c.contact_phone || "",
+          // contactPhone: c.contact_phone || "",
           registerDate: c.register_date?.slice(0, 10) || "",
         };
 
@@ -247,7 +250,7 @@ export default function EditCustomerModal({
         email: "", // ✅ ADD
         location: "",
         contactPerson: "",
-        contactPhone: "",
+        // contactPhone: "",
         registerDate: "",
       });
       setInitialForm(null);
@@ -258,9 +261,19 @@ export default function EditCustomerModal({
   /* ---------------------------------------------------
      DIRTY CHECK (ENTERPRISE STANDARD)
   --------------------------------------------------- */
+  const normalize = (obj) =>
+    Object.fromEntries(
+      Object.entries(obj).map(([k, v]) => [
+        k,
+        typeof v === "string" ? v.trim() : v,
+      ]),
+    );
+
   const isDirty = useMemo(() => {
     if (!initialForm) return false;
-    return JSON.stringify(form) !== JSON.stringify(initialForm);
+    return (
+      JSON.stringify(normalize(form)) !== JSON.stringify(normalize(initialForm))
+    );
   }, [form, initialForm]);
 
   // Check which fields have changed
@@ -281,19 +294,19 @@ export default function EditCustomerModal({
       name: isMeaningfullyChanged(form.name, initialForm.name),
       externalId: isMeaningfullyChanged(
         form.externalId,
-        initialForm.externalId
+        initialForm.externalId,
       ),
       email: isMeaningfullyChanged(form.email, initialForm.email), // ✅ ADD
 
       location: isMeaningfullyChanged(form.location, initialForm.location),
       contactPerson: isMeaningfullyChanged(
         form.contactPerson,
-        initialForm.contactPerson
+        initialForm.contactPerson,
       ),
-      contactPhone: isMeaningfullyChanged(
-        form.contactPhone,
-        initialForm.contactPhone
-      ),
+      // contactPhone: isMeaningfullyChanged(
+      //   form.contactPhone,
+      //   initialForm.contactPhone
+      // ),
     };
   };
 
@@ -346,18 +359,18 @@ export default function EditCustomerModal({
       }
 
       // 🔴 CONTACT PHONE
-      if (name === "contactPhone") {
-        validateDuplicate({ type: "phone", value })
-          .then(({ data }) => {
-            if (data.exists) {
-              setErrors((prev) => ({
-                ...prev,
-                contactPhone: "Already exists",
-              }));
-            }
-          })
-          .catch(() => {});
-      }
+      // if (name === "contactPhone") {
+      //   validateDuplicate({ type: "phone", value })
+      //     .then(({ data }) => {
+      //       if (data.exists) {
+      //         setErrors((prev) => ({
+      //           ...prev,
+      //           contactPhone: "Already exists",
+      //         }));
+      //       }
+      //     })
+      //     .catch(() => {});
+      // }
     }
 
     // 🔴 ADMIN EMAIL (exclude current company admin)
@@ -402,8 +415,6 @@ export default function EditCustomerModal({
     if (!form.location.trim()) newErrors.location = "Location is required";
     if (!form.contactPerson.trim())
       newErrors.contactPerson = "Contact person is required";
-    if (!form.contactPhone.trim())
-      newErrors.contactPhone = "Phone number is required";
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -416,10 +427,33 @@ export default function EditCustomerModal({
       const payload = {
         ...form,
         email: form.email.trim().toLowerCase(),
-        contactPhone: form.contactPhone.replace(/\s+/g, ""),
       };
 
-      await updateCustomer(companyId, payload);
+      // call backend and capture result
+      const res = await updateCustomer(companyId, payload);
+
+      // If backend returned updated user rows, find if the current logged-in user was updated
+      const updatedUsers = res?.data?.updatedUsers || [];
+
+      // If the current auth user is among the updated rows, update AuthContext + localStorage
+      if (user && updatedUsers.length > 0) {
+        const matched = updatedUsers.find((u) => u.id === user.id);
+        if (matched) {
+          const updatedUser = {
+            ...user,
+            name: matched.name, // use backend's canonical value
+          };
+          setUser(updatedUser);
+          localStorage.setItem("user", JSON.stringify(updatedUser));
+        }
+      }
+
+      // Fallback: if backend didn't return rows but logged-in user's company matches, update from form
+      if (user && !updatedUsers.length && user.company_id === companyId) {
+        const updatedUser = { ...user, name: form.name.trim() };
+        setUser(updatedUser);
+        localStorage.setItem("user", JSON.stringify(updatedUser));
+      }
 
       toast.success("Customer updated successfully");
       onSuccess?.();
@@ -585,7 +619,7 @@ export default function EditCustomerModal({
                   hasChanged={changedFields.contactPerson}
                 />
 
-                <FormInput
+                {/* <FormInput
                   label="Phone Number"
                   name="contactPhone"
                   value={form.contactPhone}
@@ -594,7 +628,7 @@ export default function EditCustomerModal({
                   icon={Phone}
                   placeholder="+1 234 567 8900"
                   hasChanged={changedFields.contactPhone}
-                />
+                /> */}
 
                 <div className="space-y-1.5" ref={locationWrapperRef}>
                   <label className="flex items-center gap-1.5 text-sm font-medium text-slate-700">
@@ -644,7 +678,7 @@ export default function EditCustomerModal({
 
                             if (locationCacheRef.current[query]) {
                               setLocationSuggestions(
-                                locationCacheRef.current[query]
+                                locationCacheRef.current[query],
                               );
                               return;
                             }
@@ -657,9 +691,9 @@ export default function EditCustomerModal({
 
                             const res = await fetch(
                               `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(
-                                value
+                                value,
                               )}&format=json&limit=5&accept-language=en&addressdetails=0&countrycodes=in`,
-                              { signal: locationAbortRef.current.signal }
+                              { signal: locationAbortRef.current.signal },
                             );
 
                             const data = await res.json();

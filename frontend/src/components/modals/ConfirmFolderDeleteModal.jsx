@@ -1,5 +1,7 @@
+// components\modals\ConfirmFolderDeleteModal.jsx
 import React from "react";
 import { Trash2, X, AlertTriangle } from "lucide-react";
+import { createPortal } from "react-dom";
 
 const ConfirmDeleteModal = ({
   open,
@@ -12,8 +14,11 @@ const ConfirmDeleteModal = ({
 }) => {
   if (!open) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[2147483647] flex items-center justify-center"
+      onClick={(e) => e.stopPropagation()}
+    >
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
@@ -21,7 +26,10 @@ const ConfirmDeleteModal = ({
       />
 
       {/* Modal */}
-      <div className="relative bg-white w-full max-w-md mx-4 rounded-2xl shadow-2xl border border-gray-100 animate-scaleIn">
+      <div
+        className="relative bg-white w-full max-w-md mx-4 rounded-2xl shadow-2xl border border-gray-100 animate-scaleIn"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Close */}
         <button
           onClick={onCancel}
@@ -78,7 +86,8 @@ const ConfirmDeleteModal = ({
           animation: scaleIn 0.2s ease-out;
         }
       `}</style>
-    </div>
+    </div>,
+    window.document.getElementById("modal-root"),
   );
 };
 

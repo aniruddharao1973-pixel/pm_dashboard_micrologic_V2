@@ -1,8 +1,8 @@
+/* index.css*/
 /* Base Styles */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
 
 /* Hide scrollbar but keep scroll functionality */
 .scrollbar-hide::-webkit-scrollbar {
@@ -86,6 +86,7 @@ html {
 }
 
 body {
+  margin: 0; /* ← THIS CLOSES THE GAP */
   @apply bg-gray-50 text-gray-900;
   overflow-x: hidden;
   opacity: 1;
@@ -94,9 +95,13 @@ body {
 
 /* Smooth transitions for all elements */
 .transition-default {
-  transition: background-color 0.3s ease, border-color 0.3s ease,
-    color 0.3s ease, transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-    opacity 0.3s ease, box-shadow 0.3s ease;
+  transition:
+    background-color 0.3s ease,
+    border-color 0.3s ease,
+    color 0.3s ease,
+    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.3s ease,
+    box-shadow 0.3s ease;
 }
 
 /* Fix for initial page load */
@@ -122,7 +127,8 @@ body {
 
 /* Sidebar transition helpers (keeps element mounted while animating) */
 .sidebar-transition {
-  transition: transform 280ms cubic-bezier(0.22, 0.9, 0.12, 1),
+  transition:
+    transform 280ms cubic-bezier(0.22, 0.9, 0.12, 1),
     opacity 240ms cubic-bezier(0.22, 0.9, 0.12, 1);
   will-change: transform, opacity;
 }
@@ -172,7 +178,8 @@ body {
 /* These make translate-x-0 / -translate-x-full animate smoothly without !important */
 .translate-x-0,
 .-translate-x-full {
-  transition: transform 280ms cubic-bezier(0.22, 0.9, 0.12, 1),
+  transition:
+    transform 280ms cubic-bezier(0.22, 0.9, 0.12, 1),
     opacity 240ms ease;
   will-change: transform, opacity;
 }
@@ -184,7 +191,8 @@ body {
 
 /* Sidebar / overlay transitions (must exist exactly) */
 .sidebar-transition {
-  transition: transform 280ms cubic-bezier(0.22, 0.9, 0.12, 1),
+  transition:
+    transform 280ms cubic-bezier(0.22, 0.9, 0.12, 1),
     opacity 240ms cubic-bezier(0.22, 0.9, 0.12, 1);
   will-change: transform, opacity;
 }
@@ -228,7 +236,8 @@ body {
 /* small compatibility: make utility translate classes animate smoothly if still used */
 .translate-x-0,
 .-translate-x-full {
-  transition: transform 280ms cubic-bezier(0.22, 0.9, 0.12, 1),
+  transition:
+    transform 280ms cubic-bezier(0.22, 0.9, 0.12, 1),
     opacity 240ms ease;
   will-change: transform, opacity;
 }
@@ -255,8 +264,13 @@ body {
 /* FONTS */
 html,
 body {
-  font-family: "Manrope", system-ui, -apple-system, BlinkMacSystemFont,
-    "Segoe UI", sans-serif;
+  font-family:
+    "Manrope",
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
 }
 
 /* Add to your global CSS file */
@@ -274,4 +288,71 @@ body {
   .xs\:grid-cols-2 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
+
+/* swal fire css */
+
+.swal-glass-popup {
+  border-radius: 20px !important;
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15) !important;
+  backdrop-filter: blur(4px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+}
+.swal-glass-title {
+  font-size: 1.25rem !important;
+  font-weight: 600 !important;
+  color: #0f172a !important;
+  margin-bottom: 0 !important;
+}
+.swal-glass-actions {
+  margin-top: 1.5rem !important;
+  gap: 0.75rem !important;
+}
+.swal-glass-confirm {
+  background: linear-gradient(135deg, #e11d48 0%, #be123c 100%) !important;
+  color: white !important;
+  padding: 0.75rem 1.75rem !important;
+  border-radius: 10px !important;
+  font-weight: 600 !important;
+  font-size: 0.875rem !important;
+  letter-spacing: 0.025em !important;
+  box-shadow: 0 4px 14px 0 rgba(225, 29, 72, 0.25) !important;
+  transition: all 0.3s !important;
+  border: none !important;
+}
+.swal-glass-confirm:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 20px 0 rgba(225, 29, 72, 0.35) !important;
+}
+.swal-glass-cancel {
+  background: rgba(255, 255, 255, 0.9) !important;
+  color: #475569 !important;
+  padding: 0.75rem 1.75rem !important;
+  border-radius: 10px !important;
+  font-weight: 600 !important;
+  font-size: 0.875rem !important;
+  letter-spacing: 0.025em !important;
+  border: 1px solid rgba(148, 163, 184, 0.2) !important;
+  transition: all 0.3s !important;
+}
+.swal-glass-cancel:hover {
+  background: rgba(241, 245, 249, 1) !important;
+  border-color: rgba(148, 163, 184, 0.3) !important;
+}
+
+/* ===== ADD THIS BLOCK HERE ===== */
+/* Mobile scrollbar fix - hide on mobile for clean edge */
+@media (max-width: 1024px) {
+  main {
+    scrollbar-width: none !important;
+  }
+
+  main::-webkit-scrollbar {
+    display: none !important;
+  }
+}
+
+.dashboard-viewport {
+  height: 100vh; /* fallback */
+  height: 100dvh; /* modern mobile browsers */
 }

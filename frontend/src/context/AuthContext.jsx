@@ -2,6 +2,16 @@
 import React, { createContext, useState, useEffect } from "react";
 import Swal from "sweetalert2";
 import axios from "axios";
+import {
+  connectSocket,
+  disconnectSocket,
+  attachNotificationAutoJoin,
+} from "../socket";
+
+import {
+  connectAutoRefreshSocket,
+  socket as autoRefreshSocket,
+} from "../socket/AutoRefreshSocket";
 
 export const AuthContext = createContext();
 
@@ -14,14 +24,23 @@ export const AuthProvider = ({ children }) => {
   });
 
   const [token, setToken] = useState(() => localStorage.getItem("token"));
+  const [sidebarContext, setSidebarContext] = useState("main");
 
   /* ---------------------------------------------------------
       LOGIN
   --------------------------------------------------------- */
+  // const login = (userData, authToken) => {
+  //   setUser(userData);
+  //   setToken(authToken);
+
+  //   localStorage.setItem("user", JSON.stringify(userData));
+  //   localStorage.setItem("token", authToken);
+  // };
+
   const login = (userData, authToken) => {
+    if (!userData?.id) return;
     setUser(userData);
     setToken(authToken);
-
     localStorage.setItem("user", JSON.stringify(userData));
     localStorage.setItem("token", authToken);
   };
@@ -44,6 +63,9 @@ export const AuthProvider = ({ children }) => {
     setToken(null);
     localStorage.removeItem("user");
     localStorage.removeItem("token");
+    // 🔌 Cleanly disconnect sockets on logout
+    disconnectSocket();
+    autoRefreshSocket.disconnect();
   };
 
   /* ---------------------------------------------------------
@@ -62,27 +84,46 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   /* ---------------------------------------------------------
+   SOCKET INITIALIZATION (ONCE PER LOGIN)
+--------------------------------------------------------- */
+  useEffect(() => {
+    if (!user || !token) return;
+
+    // 1️⃣ Connect main socket
+    connectSocket(token);
+
+    // 2️⃣ Auto-join notification room (handles reconnects)
+    attachNotificationAutoJoin(user);
+
+    // 3️⃣ Connect auto-refresh socket
+    connectAutoRefreshSocket();
+  }, [user, token]);
+
+  /* ---------------------------------------------------------
       AUTO REFRESH TOKEN (Safe Version)
   --------------------------------------------------------- */
   useEffect(() => {
     if (!token) return;
 
-    const interval = setInterval(async () => {
-      try {
-        const res = await axios.post(
-          "http://localhost:5000/api/auth/refresh",
-          { token },
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
+    const interval = setInterval(
+      async () => {
+        try {
+          const res = await axios.post(
+            "http://localhost:5000/api/auth/refresh",
+            { token },
+            { headers: { Authorization: `Bearer ${token}` } },
+          );
 
-        if (res.data.token) {
-          setToken(res.data.token);
-          localStorage.setItem("token", res.data.token);
+          if (res.data.token) {
+            setToken(res.data.token);
+            localStorage.setItem("token", res.data.token);
+          }
+        } catch {
+          console.warn("Refresh failed. Keeping old token.");
         }
-      } catch {
-        console.warn("Refresh failed. Keeping old token.");
-      }
-    }, 10 * 60 * 1000);
+      },
+      10 * 60 * 1000,
+    );
 
     return () => clearInterval(interval);
   }, [token]);
@@ -98,14 +139,14 @@ export const AuthProvider = ({ children }) => {
     <AuthContext.Provider
       value={{
         user,
+        setUser, // ✅ ADD THIS LINE
         token,
         loading,
         login,
         logout,
-
+        sidebarContext,
+        setSidebarContext,
         isAuthenticated: Boolean(token),
-
-        // new helper flags:
         isAdmin,
         isTechSales,
         isAdminLike,
@@ -115,3 +156,5 @@ export const AuthProvider = ({ children }) => {
     </AuthContext.Provider>
   );
 };
+
+export default AuthProvider;

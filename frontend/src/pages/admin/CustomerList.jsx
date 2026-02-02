@@ -1,11 +1,13 @@
 // src/pages/admin/CustomerList.jsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useLayoutEffect, useState } from "react";
+
 import { useNavigate } from "react-router-dom";
 import { useAdminApi } from "../../api/adminApi";
 import Swal from "sweetalert2";
 import CreateCustomerModal from "../../components/modals/CreateCustomerModal";
 import EditCustomerModal from "../../components/modals/EditCustomerModal";
-import Breadcrumb from "../../components/Breadcrumb";
+// import Breadcrumb from "../../components/Breadcrumb";
+import { useBreadcrumb } from "../../context/BreadcrumbContext";
 
 import {
   Plus,
@@ -29,6 +31,8 @@ import {
 export default function CustomerList() {
   const { getCustomers, deleteCompany } = useAdminApi();
 
+  const { setBreadcrumb } = useBreadcrumb();
+
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
@@ -50,6 +54,13 @@ export default function CustomerList() {
     loadCustomers();
   }, []);
 
+  useLayoutEffect(() => {
+    setBreadcrumb([
+      { label: "Dashboard", to: "/dashboard" },
+      { label: "Customers" },
+    ]);
+  }, []);
+
   // -------------------------------
   // LOADING UI
   // -------------------------------
@@ -58,7 +69,8 @@ export default function CustomerList() {
       <div
         className="
           w-full
-          min-h-screen lg:h-[calc(100vh-80px)]
+          min-h-screen
+
           bg-gradient-to-br from-slate-50 via-indigo-50/30 to-purple-50/40
           flex items-center justify-center
           p-4 sm:p-6
@@ -159,30 +171,22 @@ export default function CustomerList() {
   return (
     <div
       className="
-      w-full
-      h-screen lg:h-[calc(100vh-80px)]
-      overflow-y-auto overflow-x-hidden
-      scroll-smooth
-          bg-gradient-to-br from-slate-50 via-indigo-50/20 to-purple-50/30
-          p-4 sm:p-6 md:p-8 lg:p-10
-          lg:-mt-10
-
-        "
-      style={{
-        scrollbarWidth: "thin",
-        scrollbarColor: "#cbd5e1 #f1f5f9",
-      }}
+    w-full
+    min-h-full
+    bg-gradient-to-br from-slate-50 via-indigo-50/20 to-purple-50/30
+    p-4 sm:p-6 md:p-8 lg:p-10
+  "
     >
       <div className="max-w-7xl mx-auto space-y-6 sm:space-y-8">
         {/* Header Section */}
         <div className="mb-6 sm:mb-8 lg:mb-10">
           {/* Breadcrumb */}
-          <Breadcrumb
+          {/* <Breadcrumb
             items={[
               { label: "Dashboard", to: "/dashboard" },
               { label: "Customers" },
             ]}
-          />
+          /> */}
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 lg:gap-6">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 lg:gap-6">
               {/* Title & Description */}
@@ -191,7 +195,7 @@ export default function CustomerList() {
                   <div className="p-2 sm:p-2.5 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl sm:rounded-2xl shadow-lg shadow-indigo-500/25">
                     <Users className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                   </div>
-                  <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-gray-900 via-indigo-800 to-purple-900 bg-clip-text text-transparent">
+                  <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-gray-700 via-indigo-800 to-purple-900 bg-clip-text text-transparent">
                     Customers
                   </h1>
                 </div>
@@ -322,10 +326,10 @@ export default function CustomerList() {
                                     index % 4 === 0
                                       ? "from-violet-500 to-purple-600"
                                       : index % 4 === 1
-                                      ? "from-blue-500 to-cyan-600"
-                                      : index % 4 === 2
-                                      ? "from-emerald-500 to-teal-600"
-                                      : "from-rose-500 to-pink-600"
+                                        ? "from-blue-500 to-cyan-600"
+                                        : index % 4 === 2
+                                          ? "from-emerald-500 to-teal-600"
+                                          : "from-rose-500 to-pink-600"
                                   }
                                   flex items-center justify-center
                                   text-white font-bold text-lg xl:text-xl
@@ -359,7 +363,7 @@ export default function CustomerList() {
                             <Clock className="w-4 h-4 text-gray-400" />
                             <span>
                               {new Date(
-                                company.users[0]?.created_at
+                                company.users[0]?.created_at,
                               ).toLocaleDateString("en-US", {
                                 month: "short",
                                 day: "numeric",
@@ -369,7 +373,7 @@ export default function CustomerList() {
                           </div>
                           <p className="text-xs text-gray-400 mt-1 ml-6">
                             {new Date(
-                              company.users[0]?.created_at
+                              company.users[0]?.created_at,
                             ).toLocaleTimeString("en-US", {
                               hour: "2-digit",
                               minute: "2-digit",
@@ -428,7 +432,7 @@ export default function CustomerList() {
                               onClick={() =>
                                 handleDelete(
                                   company.company_id,
-                                  company.company_name
+                                  company.company_name,
                                 )
                               }
                               className="
@@ -495,10 +499,10 @@ export default function CustomerList() {
                             index % 4 === 0
                               ? "from-violet-500 to-purple-600"
                               : index % 4 === 1
-                              ? "from-blue-500 to-cyan-600"
-                              : index % 4 === 2
-                              ? "from-emerald-500 to-teal-600"
-                              : "from-rose-500 to-pink-600"
+                                ? "from-blue-500 to-cyan-600"
+                                : index % 4 === 2
+                                  ? "from-emerald-500 to-teal-600"
+                                  : "from-rose-500 to-pink-600"
                           }
                           flex items-center justify-center flex-shrink-0
                           text-white font-bold text-lg sm:text-xl
@@ -531,7 +535,7 @@ export default function CustomerList() {
                           </div>
                           <span>
                             {new Date(
-                              company.users[0]?.created_at
+                              company.users[0]?.created_at,
                             ).toLocaleDateString("en-US", {
                               month: "short",
                               day: "numeric",

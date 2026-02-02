@@ -1,6 +1,6 @@
 // src/App.jsx
 import React, { useEffect } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
@@ -10,6 +10,10 @@ import DocumentsPage from "./pages/DocumentsPage";
 import DocumentVersionsPage from "./pages/DocumentVersionsPage";
 import CustomerDashboard from "./pages/customer/CustomerDashboard";
 import CustomerListForProjects from "./pages/admin/CustomerListForProjects";
+import TeamsDashboard from "./pages/teams/TeamsDashboard";
+import DepartmentsPage from "./pages/teams/DepartmentsPage";
+import DepartmentDashboard from "./pages/department/DepartmentDashboard";
+import DepartmentProjectsPage from "./pages/teams/DepartmentProjectsPage";
 
 // import CreateCustomer from "./pages/admin/CreateCustomer";
 import CustomerList from "./pages/admin/CustomerList";
@@ -27,6 +31,8 @@ import { connectSocket } from "./socket";
 
 import AdminRecycleBin from "./pages/admin/RecycleBin";
 import CustomerRecycleBin from "./pages/customer/RecycleBin";
+// import TeamsRecycleBin from "./pages/teams/RecycleBin";
+import DepartmentRecycleBin from "./pages/department/DepartmentRecycleBin";
 
 import ResetPassword from "./pages/ResetPassword";
 import SubFoldersPage from "./pages/SubFoldersPage";
@@ -34,7 +40,7 @@ import AppToast from "./components/toast/AppToast";
 
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading, user } = useAuth();
-  const location = window.location.pathname;
+  const location = useLocation().pathname;
 
   if (loading) {
     return (
@@ -46,9 +52,31 @@ const ProtectedRoute = ({ children }) => {
     return <Navigate to="/login" replace />;
   }
 
-  // 🔒 FRONTEND GUARD: Customer → Admin URL swap
-  if (user?.role === "customer" && location.startsWith("/admin")) {
+  if (
+    user?.role === "customer" &&
+    (location.startsWith("/admin") || location.startsWith("/teams"))
+  ) {
     return <Navigate to="/forbidden" replace />;
+  }
+
+  if (user?.role === "department") {
+    const allowed = [
+      "/department",
+      "/projects",
+      "/teams/projects",
+      "/admin/projects",
+    ];
+
+    const isAllowed = allowed.some((path) => location.startsWith(path));
+
+    // ✅ allow ALL document detail routes
+    if (location.includes("/documents/")) {
+      return children;
+    }
+
+    if (!isAllowed) {
+      return <Navigate to="/department/dashboard" replace />;
+    }
   }
 
   return children;
@@ -62,22 +90,35 @@ const App = () => {
 
   const FallbackRedirect = () => {
     const { user } = useAuth();
+    const location = useLocation();
+
+    console.warn("⚠️ FallbackRedirect fired for:", location.pathname);
 
     if (!user) {
       return <Navigate to="/login" replace />;
     }
 
-    // Admin & Tech Sales → Customer list page
+    // ✅ CRITICAL: allow deep admin project routes
+    // if (location.pathname.startsWith("/admin/projects")) {
+    //   console.log("✅ Allowing admin project deep route");
+    //   return null;
+    // }
+
+    // Admin / TechSales
     if (user.role === "admin" || user.role === "techsales") {
       return <Navigate to="/admin/customers" replace />;
     }
 
-    // Customer → Their dashboard
+    // Department
+    if (user.role === "department") {
+      return <Navigate to="/department/dashboard" replace />;
+    }
+
+    // Customer
     if (user.role === "customer") {
       return <Navigate to="/customer/dashboard" replace />;
     }
 
-    // Default safety net
     return <Navigate to="/login" replace />;
   };
 
@@ -100,7 +141,8 @@ const App = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    // <div className="h-full bg-gray-100">
+    <>
       <Routes>
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<Login />} />
@@ -187,6 +229,54 @@ const App = () => {
           }
         />
 
+        {/* ======================
+   ADMIN → PROJECT ROUTES
+====================== */}
+
+        <Route
+          path="/admin/projects/:projectId/folders"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <FoldersPage />
+              </DashboardLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/admin/projects/:projectId/folders/:folderId"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <SubFoldersPage />
+              </DashboardLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/admin/projects/:projectId/documents/:folderId"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <DocumentsPage />
+              </DashboardLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/admin/projects/:projectId/folders/:folderId/documents/:documentId"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <DocumentVersionsPage />
+              </DashboardLayout>
+            </ProtectedRoute>
+          }
+        />
+
         {/* ⭐ ADD IT HERE */}
         <Route
           path="/admin/projects/customers"
@@ -244,6 +334,39 @@ const App = () => {
         />
 
         <Route
+          path="/teams"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <TeamsDashboard />
+              </DashboardLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/teams/departments"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <DepartmentsPage />
+              </DashboardLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/teams/departments/:departmentId/projects"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <DepartmentProjectsPage />
+              </DashboardLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/projects/:projectId/documents/:folderId"
           element={
             <ProtectedRoute>
@@ -265,6 +388,7 @@ const App = () => {
           }
         />
 
+        {/* ADMIN / TECH SALES */}
         <Route
           path="/recycle-bin"
           element={
@@ -276,6 +400,7 @@ const App = () => {
           }
         />
 
+        {/* CUSTOMER */}
         <Route
           path="/customer/recycle-bin"
           element={
@@ -287,8 +412,101 @@ const App = () => {
           }
         />
 
+        {/* ======================
+   DEPARTMENT ROUTES
+  ====================== */}
+
+        <Route
+          path="/department/dashboard"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <DepartmentDashboard />
+              </DashboardLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/department/recycle-bin"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <DepartmentRecycleBin />
+              </DashboardLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* TEAMS */}
+        {/* <Route
+          path="/teams/recycle-bin"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <TeamsRecycleBin />
+              </DashboardLayout>
+            </ProtectedRoute>
+          }
+        /> */}
+
+        {/* ======================
+   TEAMS → PROJECT ROUTES
+====================== */}
+
+        <Route
+          path="/teams/projects/:projectId/folders"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <FoldersPage />
+              </DashboardLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/teams/projects/:projectId/folders/:folderId"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <SubFoldersPage />
+              </DashboardLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/teams/projects/:projectId/documents/:folderId"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <DocumentsPage />
+              </DashboardLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/teams/projects/:projectId/folders/:folderId/documents/:documentId"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <DocumentVersionsPage />
+              </DashboardLayout>
+            </ProtectedRoute>
+          }
+        />
+
         {/* <Route path="*" element={<Navigate to="/dashboard" replace />} /> */}
-        <Route path="*" element={<FallbackRedirect />} />
+        <Route
+          path="*"
+          element={
+            <ProtectedRoute>
+              <FallbackRedirect />
+            </ProtectedRoute>
+          }
+        />
 
         {/*  <Route path="*" element={<Navigate to="/admin/customers" replace />} /> */}
       </Routes>
@@ -297,7 +515,7 @@ const App = () => {
       {/* <ToastContainer position="top-center" autoClose={2500} theme="colored" /> */}
 
       <AppToast />
-    </div>
+    </>
   );
 };
 

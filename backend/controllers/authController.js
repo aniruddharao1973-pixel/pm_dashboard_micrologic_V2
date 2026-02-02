@@ -14,22 +14,37 @@ export const login = async (req, res) => {
   try {
     const { rows } = await pool.query(
       `
-      SELECT 
-        u.id,
-        u.name,
-        u.email,
-        u.password_hash,
-        u.role,
-        u.must_change_password,
-        u.failed_login_attempts,
-        u.password_reset_expires,
-        uc.company_id
-      FROM users u
-      LEFT JOIN user_companies uc ON uc.user_id = u.id
-      WHERE u.email = $1
-      LIMIT 1
-      `,
-      [email]
+SELECT 
+  u.id,
+
+  -- 🔥 IMPORTANT CHANGE
+  COALESCE(d.name, u.name) AS display_name,
+
+  u.name AS user_name,
+  d.name AS department_name,
+
+  u.email,
+  u.password_hash,
+  u.role,
+  u.must_change_password,
+  u.failed_login_attempts,
+  u.password_reset_expires,
+
+  uc.company_id,
+  u.department_id
+
+FROM users u
+
+LEFT JOIN departments d 
+  ON d.id = u.department_id
+
+LEFT JOIN user_companies uc 
+  ON uc.user_id = u.id
+
+WHERE u.email = $1
+LIMIT 1
+  `,
+      [email],
     );
 
     if (rows.length === 0) {
@@ -65,7 +80,7 @@ export const login = async (req, res) => {
             last_failed_login = NOW()
         WHERE id = $2
         `,
-        [attempts, user.id]
+        [attempts, user.id],
       );
 
       // Attempt 1 → generic
@@ -92,7 +107,7 @@ export const login = async (req, res) => {
           last_failed_login = NULL
       WHERE id = $1
       `,
-      [user.id]
+      [user.id],
     );
 
     /* --------------------------------------------------
@@ -113,6 +128,7 @@ export const login = async (req, res) => {
       email: user.email,
       role: user.role,
       company_id: user.company_id ?? null,
+      department_id: user.department_id ?? null,
     };
 
     const token = jwt.sign(payload, process.env.JWT_SECRET, {
@@ -124,10 +140,14 @@ export const login = async (req, res) => {
       token,
       user: {
         id: user.id,
-        name: user.name,
+
+        // ✅ FIX — use resolved display name
+        name: user.display_name,
+
         email: user.email,
         role: user.role,
         company_id: user.company_id ?? null,
+        department_id: user.department_id ?? null,
       },
     });
   } catch (err) {
@@ -162,7 +182,7 @@ export const requestPasswordReset = async (req, res) => {
       WHERE email = $3
       RETURNING id, name, email
       `,
-      [token, expires, email]
+      [token, expires, email],
     );
 
     // Prevent email enumeration
@@ -207,7 +227,7 @@ export const confirmPasswordReset = async (req, res) => {
         AND password_reset_expires > NOW()
       LIMIT 1
       `,
-      [token]
+      [token],
     );
 
     if (result.rowCount === 0) {
@@ -226,7 +246,7 @@ export const confirmPasswordReset = async (req, res) => {
           must_change_password = false
       WHERE id = $2
       `,
-      [hash, result.rows[0].id]
+      [hash, result.rows[0].id],
     );
 
     res.json({ message: "Password reset successful" });
@@ -253,7 +273,7 @@ export const setNewPassword = async (req, res) => {
       `UPDATE users 
        SET password_hash = $1, must_change_password = false
        WHERE id = $2`,
-      [newHash, userId]
+      [newHash, userId],
     );
 
     res.json({ message: "Password updated successfully" });
@@ -273,7 +293,7 @@ export const changePassword = async (req, res) => {
   try {
     const result = await pool.query(
       "SELECT password_hash FROM users WHERE id = $1",
-      [userId]
+      [userId],
     );
 
     if (result.rows.length === 0) {
@@ -282,7 +302,7 @@ export const changePassword = async (req, res) => {
 
     const match = await bcrypt.compare(
       oldPassword,
-      result.rows[0].password_hash
+      result.rows[0].password_hash,
     );
     if (!match) {
       return res.status(400).json({ message: "Old password is incorrect" });
@@ -333,6 +353,7 @@ export const refreshToken = async (req, res) => {
       email: decoded.email,
       role: decoded.role,
       company_id: decoded.company_id ?? null,
+      department_id: decoded.department_id ?? null,
     };
 
     const newToken = jwt.sign(newPayload, process.env.JWT_SECRET, {
@@ -362,7 +383,7 @@ export const validateResetToken = async (req, res) => {
       FROM users
       WHERE password_reset_token = $1
       `,
-      [token]
+      [token],
     );
 
     console.log("📄 DB RESULT:", result.rows);

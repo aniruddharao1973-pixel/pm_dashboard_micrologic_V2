@@ -49,31 +49,75 @@ export const getFoldersByProject = async (req, res) => {
     }
 
     // ===========================
-    // CUSTOMER → ONLY AVAILABLE ROOT FOLDERS
+    // CUSTOMER → ONLY SHARED + VISIBLE ROOT FOLDERS
     // ===========================
     else if (role === "customer") {
       query = `
+        SELECT
+          id,
+          name,
+          parent_id,
+          project_id,
+          visibility,
+          customer_can_see_folder,
+          customer_can_view,
+          customer_can_download,
+          customer_can_upload,
+          customer_can_delete,
+          created_at
+        FROM folders
+        WHERE project_id = $1
+          AND parent_id IS NULL
+          AND deleted_at IS NULL
+          AND visibility = 'shared'
+          AND customer_can_see_folder = true
+        ORDER BY name ASC
+      `;
+    }
+
+    // ===========================
+    // DEPARTMENT → SHARED + DEPARTMENT-VISIBLE ROOT FOLDERS
+    // ===========================
+    else if (role === "department") {
+      const { departmentId, department_id } = req.user;
+      const resolvedDepartmentId = departmentId || department_id;
+
+      if (!resolvedDepartmentId) {
+        return res.json([]);
+      }
+
+      query = `
     SELECT
-      id,
-      name,
-      parent_id,
-      project_id,
-      visibility,
-      customer_can_see_folder,
-      customer_can_view,
-      customer_can_download,
-      customer_can_upload,
-      customer_can_delete,
-      created_at
-    FROM folders
-    WHERE project_id = $1
-      AND parent_id IS NULL
-      AND deleted_at IS NULL
-      AND visibility = 'shared'
-      AND customer_can_see_folder = true
-    ORDER BY name ASC
+      f.id,
+      f.name,
+      f.parent_id,
+      f.project_id,
+      f.visibility,
+      f.department_can_see_folder,
+      f.department_can_view,
+      f.department_can_download,
+      f.department_can_upload,
+      f.department_can_delete,
+      f.created_at
+    FROM folders f
+    JOIN project_departments pd
+      ON pd.project_id = f.project_id
+    WHERE f.project_id = $1
+      AND pd.department_id = $2
+      AND f.parent_id IS NULL
+      AND f.deleted_at IS NULL
+      AND f.visibility = 'shared'
+      AND f.department_can_see_folder = true
+    ORDER BY f.name ASC
   `;
-    } else {
+
+      params = [projectId, resolvedDepartmentId];
+    }
+
+    // ===========================
+    // UNKNOWN ROLE
+    // ===========================
+    else {
       return res.status(403).json({ message: "Access denied" });
     }
 
@@ -197,97 +241,10 @@ export const getCustomerVisibleFolders = async (req, res) => {
   }
 };
 
-// // ✅ Get direct sub-folders
-// // - Admin / TechSales: see ALL subfolders
-// // - Customer: only see AVAILABLE + SHARED subfolders
-// export const getSubFolders = async (req, res) => {
-//   try {
-//     const { folderId } = req.params;
-//     const role = req.user?.role;
-
-//     let query;
-//     let params = [folderId];
-
-//     // ===========================
-//     // CUSTOMER
-//     // ===========================
-//     if (role === "customer") {
-//       query = `
-//         SELECT
-//           f.id,
-//           f.name,
-//           f.parent_id,
-//           f.project_id,
-//           f.visibility,
-//           f.customer_can_see_folder,
-//           f.customer_can_view,
-//           f.customer_can_download,
-//           f.customer_can_upload,
-//           f.customer_can_delete,
-//           f.created_at
-//         FROM folders f
-//         JOIN folders p ON f.parent_id = p.id
-//         WHERE f.parent_id = $1
-//           AND f.deleted_at IS NULL
-//           AND f.visibility = 'shared'
-//           AND f.customer_can_see_folder = true
-//           AND p.customer_can_see_folder = true
-//         ORDER BY f.name ASC
-//       `;
-//     }
-
-//     // ===========================
-//     // ADMIN / TECHSALES
-//     // ===========================
-//     else if (role === "admin" || role === "techsales") {
-//       query = `
-//         SELECT
-//           id,
-//           name,
-//           parent_id,
-//           project_id,
-//           visibility,
-//           customer_can_see_folder,
-//           customer_can_view,
-//           customer_can_download,
-//           customer_can_upload,
-//           customer_can_delete,
-//           created_at
-//         FROM folders
-//         WHERE parent_id = $1
-//           AND deleted_at IS NULL
-//         ORDER BY name ASC
-//       `;
-//     } else {
-//       return res.status(403).json({ message: "Access denied" });
-//     }
-
-//     const result = await pool.query(query, params);
-
-//     // 🔍 DEBUG (safe to remove later)
-//     if (role === "customer") {
-//       console.log("🔎 CUSTOMER SUBFOLDER FETCH");
-//       console.log("Parent folder:", folderId);
-//       console.table(
-//         result.rows.map((f) => ({
-//           id: f.id,
-//           name: f.name,
-//           visibility: f.visibility,
-//           can_see: f.customer_can_see_folder,
-//         }))
-//       );
-//     }
-
-//     res.json(result.rows);
-//   } catch (error) {
-//     console.error("Get Subfolders Error:", error);
-//     res.status(500).json({ message: "Server error" });
-//   }
-// };
-
 // ✅ Get direct sub-folders
 // - Admin / TechSales: see ALL subfolders
 // - Customer: only see AVAILABLE + SHARED subfolders
+// - Department: only see SHARED + department-visible subfolders
 export const getSubFolders = async (req, res) => {
   try {
     const { folderId } = req.params;
@@ -301,32 +258,55 @@ export const getSubFolders = async (req, res) => {
     // ===========================
     if (role === "customer") {
       query = `
-        SELECT
-          f.id,
-          f.name,
-          f.parent_id,
-          f.project_id,
-          f.visibility,
-          f.customer_can_see_folder,
-          f.customer_can_view,
-          f.customer_can_download,
-          f.customer_can_upload,
-          f.customer_can_delete,
-          f.created_at,
-          COUNT(d.id) AS document_count
-        FROM folders f
-        JOIN folders p ON f.parent_id = p.id
-        LEFT JOIN documents d
-          ON d.folder_id = f.id
-          AND d.deleted_at IS NULL
-        WHERE f.parent_id = $1
-          AND f.deleted_at IS NULL
-          AND f.visibility = 'shared'
-          AND f.customer_can_see_folder = true
-          AND p.customer_can_see_folder = true
-        GROUP BY f.id, p.id
-        ORDER BY f.name ASC
-      `;
+    SELECT
+      f.id,
+      f.name,
+      f.parent_id,
+      f.project_id,
+      f.visibility,
+
+      f.customer_can_see_folder,
+      f.customer_can_view,
+      f.customer_can_download,
+      f.customer_can_upload,
+      f.customer_can_delete,
+
+      f.created_at,
+
+      /* TOTAL (admin reference, not used by customer UI) */
+      COUNT(d.id) AS document_count,
+
+      /* ✅ CUSTOMER-SAFE COUNT */
+      COUNT(d.id) FILTER (
+        WHERE
+          d.deleted_at IS NULL
+          AND (
+            /* 1️⃣ Direct upload (no review flow) */
+            d.review_requested = false
+
+            /* 2️⃣ Approved via review */
+            OR d.review_status = 'approved'
+
+            /* 3️⃣ Admin / TechSales uploads */
+            OR d.created_by_role IN ('admin','techsales')
+          )
+      ) AS approved_document_count
+
+    FROM folders f
+    JOIN folders p ON f.parent_id = p.id
+
+    LEFT JOIN documents d
+      ON d.folder_id = f.id
+
+    WHERE f.parent_id = $1
+      AND f.deleted_at IS NULL
+      AND f.visibility = 'shared'
+      AND f.customer_can_see_folder = true
+      AND p.customer_can_see_folder = true
+
+    GROUP BY f.id, p.id
+    ORDER BY f.name ASC
+  `;
     }
 
     // ===========================
@@ -356,7 +336,66 @@ export const getSubFolders = async (req, res) => {
         GROUP BY f.id
         ORDER BY f.name ASC
       `;
-    } else {
+    }
+
+    // ===========================
+    // DEPARTMENT
+    // ===========================
+    else if (role === "department") {
+      const { departmentId, department_id } = req.user;
+      const resolvedDepartmentId = departmentId || department_id;
+
+      if (!resolvedDepartmentId) {
+        return res.json([]);
+      }
+
+      query = `
+    SELECT
+      f.id,
+      f.name,
+      f.parent_id,
+      f.project_id,
+      f.visibility,
+
+      f.department_can_see_folder,
+      f.department_can_view,
+      f.department_can_download,
+      f.department_can_upload,
+      f.department_can_delete,
+
+      f.created_at,
+      COUNT(DISTINCT d.id) AS document_count
+    FROM folders f
+
+    /* documents only for count */
+    LEFT JOIN documents d
+      ON d.folder_id = f.id
+      AND d.deleted_at IS NULL
+
+    WHERE f.parent_id = $1
+      AND f.deleted_at IS NULL
+      AND f.visibility = 'shared'
+      AND f.department_can_see_folder = true
+
+      /* ✅ department access WITHOUT row multiplication */
+      AND EXISTS (
+        SELECT 1
+        FROM project_departments pd
+        WHERE pd.project_id = f.project_id
+          AND pd.department_id = $2
+      )
+
+    GROUP BY f.id
+    ORDER BY f.name ASC
+  `;
+
+      params.push(resolvedDepartmentId);
+    }
+
+    // ===========================
+    // UNKNOWN ROLE
+    // ===========================
+    else {
       return res.status(403).json({ message: "Access denied" });
     }
 
@@ -373,7 +412,7 @@ export const getSubFolders = async (req, res) => {
           docs: f.document_count,
           visibility: f.visibility,
           can_see: f.customer_can_see_folder,
-        }))
+        })),
       );
     }
 
@@ -391,122 +430,93 @@ export const getFolderInfo = async (req, res) => {
 
     const result = await pool.query(
       `
-  SELECT
-    id,
-    name,
-    parent_id,
-    project_id,
-    visibility,               -- ✅ ADD THIS
-    customer_can_view,
-    customer_can_download,
-    customer_can_upload,
-    customer_can_delete,
-    created_at
-  FROM folders
-  WHERE id = $1
-    AND deleted_at IS NULL
-  `,
-      [folderId]
+      SELECT
+        id,
+        name,
+        parent_id,
+        project_id,
+        visibility,
+
+        customer_can_view,
+        customer_can_download,
+        customer_can_upload,
+        customer_can_delete,
+
+        department_can_see_folder,
+        department_can_view,
+        department_can_download,
+        department_can_upload,
+        department_can_delete,
+
+        created_at
+      FROM folders
+      WHERE id = $1
+        AND deleted_at IS NULL
+      `,
+      [folderId],
     );
+
+    // ❗ Always check existence FIRST
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Folder not found" });
+    }
+
+    const folder = result.rows[0];
+
+    // 🔒 DEPARTMENT VISIBILITY CHECK (PAGE ACCESS)
+    if (
+      req.user.role === "department" &&
+      folder.department_can_see_folder !== true
+    ) {
+      return res.status(403).json({ message: "Access denied" });
+    }
 
     if (process.env.NODE_ENV !== "production") {
       console.log("[FOLDER INFO]", folderId);
     }
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ message: "Folder not found" });
-    }
-
-    res.json(result.rows[0]);
+    res.json(folder);
   } catch (error) {
     console.error("Get Folder Info Error:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
 
-// // ⭐ Update customer permissions for a SINGLE folder only
-// export const updateFolderPermissions = async (req, res) => {
-//   try {
-//     const { folderId } = req.params;
-//     const {
-//       customer_can_see_folder = true,
-//       customer_can_view = false,
-//       customer_can_download = false,
-//       customer_can_upload = false,
-//       customer_can_delete = false,
-//     } = req.body;
-
-//     if (!["admin", "techsales"].includes(req.user.role)) {
-//       return res.status(403).json({ message: "Access denied" });
-//     }
-
-//     const result = await pool.query(
-//       `
-//       UPDATE folders
-//       SET
-//         customer_can_see_folder = $1,
-//         customer_can_view = $2,
-//         customer_can_download = $3,
-//         customer_can_upload = $4,
-//         customer_can_delete = $5
-//       WHERE id = $6
-//         AND deleted_at IS NULL
-//         AND visibility = 'shared'
-//       RETURNING id, name, customer_can_see_folder
-//       `,
-//       [
-//         customer_can_see_folder,
-//         customer_can_view,
-//         customer_can_download,
-//         customer_can_upload,
-//         customer_can_delete,
-//         folderId,
-//       ]
-//     );
-
-//     if (result.rowCount === 0) {
-//       return res.status(404).json({
-//         message: "Folder not found or not eligible for permissions",
-//       });
-//     }
-
-//     res.json({
-//       message: "Folder permissions updated",
-//       folder: result.rows[0],
-//     });
-//   } catch (error) {
-//     console.error("Update Folder Permissions Error:", error);
-//     res.status(500).json({ message: "Server error" });
-//   }
-// };
-
 export const updateFolderPermissions = async (req, res) => {
   try {
     const { folderId } = req.params;
+
     const {
-      customer_can_see_folder = true,
-      customer_can_view = false,
-      customer_can_download = false,
-      customer_can_upload = false,
-      customer_can_delete = false,
+      customer_can_see_folder,
+      customer_can_view,
+      customer_can_download,
+      customer_can_upload,
+      customer_can_delete,
+
+      department_can_see_folder, // ✅ MISSING
+      department_can_view,
+      department_can_download,
+      department_can_upload,
+      department_can_delete,
     } = req.body;
 
-    if (!["admin", "techsales"].includes(req.user.role)) {
-      return res.status(403).json({ message: "Access denied" });
-    }
-
-    const result = await pool.query(
+    await pool.query(
       `
       UPDATE folders
       SET
-        customer_can_see_folder = $1,
-        customer_can_view = $2,
-        customer_can_download = $3,
-        customer_can_upload = $4,
-        customer_can_delete = $5
-      WHERE id = $6
-        AND deleted_at IS NULL
-      RETURNING id, name, is_default
+        customer_can_see_folder = COALESCE($1, customer_can_see_folder),
+        customer_can_view = COALESCE($2, customer_can_view),
+        customer_can_download = COALESCE($3, customer_can_download),
+        customer_can_upload = COALESCE($4, customer_can_upload),
+        customer_can_delete = COALESCE($5, customer_can_delete),
+
+        department_can_see_folder = COALESCE($6, department_can_see_folder),
+        department_can_view = COALESCE($7, department_can_view),
+        department_can_download = COALESCE($8, department_can_download),
+        department_can_upload = COALESCE($9, department_can_upload),
+        department_can_delete = COALESCE($10, department_can_delete)
+
+      WHERE id = $11
       `,
       [
         customer_can_see_folder,
@@ -514,23 +524,21 @@ export const updateFolderPermissions = async (req, res) => {
         customer_can_download,
         customer_can_upload,
         customer_can_delete,
+
+        department_can_see_folder,
+        department_can_view,
+        department_can_download,
+        department_can_upload,
+        department_can_delete,
+
         folderId,
-      ]
+      ],
     );
 
-    if (result.rowCount === 0) {
-      return res.status(404).json({
-        message: "Folder not found",
-      });
-    }
-
-    res.json({
-      message: "Folder permissions updated",
-      folder: result.rows[0],
-    });
-  } catch (error) {
-    console.error("Update Folder Permissions Error:", error);
-    res.status(500).json({ message: "Server error" });
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Update Folder Permissions Error:", err);
+    res.status(500).json({ message: "Failed to update folder permissions" });
   }
 };
 
@@ -582,7 +590,7 @@ export const createFolder = async (req, res) => {
         customer_can_download,
         customer_can_upload,
         customer_can_delete,
-      ]
+      ],
     );
 
     res.status(201).json(result.rows[0]);
@@ -622,7 +630,7 @@ export const createSubFolder = async (req, res) => {
         AND project_id = $2
         AND deleted_at IS NULL
       `,
-      [parentId, project_id]
+      [parentId, project_id],
     );
 
     if (parentRes.rowCount === 0) {
@@ -667,7 +675,7 @@ export const createSubFolder = async (req, res) => {
       VALUES ($1, $2, $3, false, $4, false, false, false, false)
       RETURNING *
       `,
-      [project_id, name, parentId, visibility]
+      [project_id, name, parentId, visibility],
     );
 
     console.log("🟢 SUBFOLDER CREATED", {
@@ -711,7 +719,7 @@ export const deleteFolder = async (req, res) => {
       )
       SELECT id FROM folder_tree
       `,
-      [folderId]
+      [folderId],
     );
 
     if (rows.length === 0) {
@@ -728,7 +736,7 @@ export const deleteFolder = async (req, res) => {
       SET deleted_at = now(), deleted_by = $2
       WHERE id = ANY($1)
       `,
-      [folderIds, userId]
+      [folderIds, userId],
     );
 
     // 3️⃣ Soft delete documents inside those folders
@@ -738,7 +746,7 @@ export const deleteFolder = async (req, res) => {
       SET deleted_at = now(), deleted_by = $2
       WHERE folder_id = ANY($1)
       `,
-      [folderIds, userId]
+      [folderIds, userId],
     );
 
     await pool.query("COMMIT");
@@ -778,7 +786,7 @@ export const restoreFolder = async (req, res) => {
       )
       SELECT id FROM folder_tree
       `,
-      [folderId]
+      [folderId],
     );
 
     if (rows.length === 0) {
@@ -797,7 +805,7 @@ export const restoreFolder = async (req, res) => {
       SET deleted_at = NULL, deleted_by = NULL
       WHERE id = ANY($1)
       `,
-      [folderIds]
+      [folderIds],
     );
 
     // 3️⃣ Restore documents
@@ -807,7 +815,7 @@ export const restoreFolder = async (req, res) => {
       SET deleted_at = NULL, deleted_by = NULL
       WHERE folder_id = ANY($1)
       `,
-      [folderIds]
+      [folderIds],
     );
 
     await pool.query("COMMIT");
@@ -842,7 +850,7 @@ export const getDeletedFoldersByProject = async (req, res) => {
         AND deleted_at IS NOT NULL
       ORDER BY deleted_at DESC
       `,
-      [projectId]
+      [projectId],
     );
 
     res.json(result.rows);
@@ -890,7 +898,7 @@ export const getCustomerRecycleBinFolders = async (req, res) => {
       WHERE user_id = $1
       LIMIT 1
       `,
-      [req.user.id]
+      [req.user.id],
     );
 
     if (companyRes.rowCount === 0) {
@@ -913,7 +921,7 @@ export const getCustomerRecycleBinFolders = async (req, res) => {
         AND f.visibility = 'shared'
       ORDER BY f.deleted_at DESC
       `,
-      [companyId]
+      [companyId],
     );
 
     res.json(result.rows);
@@ -942,43 +950,98 @@ export const getAllFoldersForAccessControl = async (req, res) => {
      */
     const result = await pool.query(
       `
+SELECT
+  id,
+  name,
+  parent_id,
+  project_id,
+  visibility,
+
+  customer_can_see_folder,
+  customer_can_view,
+  customer_can_download,
+  customer_can_upload,
+  customer_can_delete,
+
+  department_can_see_folder,
+  department_can_view,
+  department_can_download,
+  department_can_upload,
+  department_can_delete,
+
+  created_at
+FROM folders
+WHERE project_id = $1
+  AND deleted_at IS NULL
+  AND visibility = 'shared'
+ORDER BY parent_id NULLS FIRST, name ASC
+
+      `,
+      [projectId],
+    );
+
+    /* ================================================= */
+
+    // console.log("📂 ACCESS MODAL FOLDERS");
+    // console.table(
+    //   result.rows.map((f) => ({
+    //     id: f.id,
+    //     name: f.name,
+    //     parent_id: f.parent_id,
+    //     visibility: f.visibility,
+    //   }))
+    // );
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Access Control Folder Error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// ⭐ Folder access snapshot (for polling)
+export const getFolderAccessSnapshot = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+
+    // Only for non-admin roles
+    const role = req.user.role;
+    if (role === "admin" || role === "techsales") {
+      return res.json({ folders: [] });
+    }
+
+    const result = await pool.query(
+      `
       SELECT
         id,
-        name,
-        parent_id,
-        project_id,
-        visibility,
+
         customer_can_see_folder,
         customer_can_view,
         customer_can_download,
         customer_can_upload,
         customer_can_delete,
-        created_at
+
+        department_can_see_folder,
+        department_can_view,
+        department_can_download,
+        department_can_upload,
+        department_can_delete,
+
+        visibility
       FROM folders
       WHERE project_id = $1
         AND deleted_at IS NULL
         AND visibility = 'shared'
-      ORDER BY parent_id NULLS FIRST, name ASC
-
+      ORDER BY id
       `,
       [projectId]
     );
 
-    /* ================================================= */
-
-    console.log("📂 ACCESS MODAL FOLDERS");
-    console.table(
-      result.rows.map((f) => ({
-        id: f.id,
-        name: f.name,
-        parent_id: f.parent_id,
-        visibility: f.visibility,
-      }))
-    );
-
-    res.json(result.rows);
+    res.json({
+      folders: result.rows,
+    });
   } catch (err) {
-    console.error("Access Control Folder Error:", err);
+    console.error("Folder access snapshot error:", err);
     res.status(500).json({ message: "Server error" });
   }
 };

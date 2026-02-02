@@ -1,6 +1,6 @@
 // src/pages/SubFoldersPage.jsx
 import React, { useEffect, useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate, Link, useLocation } from "react-router-dom";
 import { useFoldersApi } from "../api/foldersApi";
 import { useAuth } from "../hooks/useAuth";
 import { useBreadcrumb } from "../context/BreadcrumbContext";
@@ -36,6 +36,15 @@ const SubFoldersPage = () => {
   const { user } = useAuth();
   const { setBreadcrumb } = useBreadcrumb();
 
+  // ===============================
+  // CUSTOMER DOCUMENT COUNT SAFETY
+  // ===============================
+  const getVisibleDocCount = (sf) => {
+    if (user.role !== "customer") return sf.document_count || 0;
+
+    return sf.approved_document_count ?? (sf.document_count || 0);
+  };
+
   const { getSubFolders, getFolderById, createSubFolder, deleteFolder } =
     useFoldersApi();
 
@@ -49,9 +58,14 @@ const SubFoldersPage = () => {
   const [customerName, setCustomerName] = useState("");
   const [projectName, setProjectName] = useState("");
   const [companyId, setCompanyId] = useState(null);
+  const [departmentId, setDepartmentId] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const { getProjectById } = useProjectsApi();
   const { getCustomer } = useAdminApi();
+  const location = useLocation();
+  const isTeamsRoute = location.pathname.startsWith("/teams");
+  const basePath = isTeamsRoute ? "/teams/projects" : "/projects";
 
   const isAdminLike = user.role === "admin" || user.role === "techsales";
 
@@ -67,25 +81,20 @@ const SubFoldersPage = () => {
       setProjectName(project.name);
       setCompanyId(project.company_id);
 
+      // ✅ ADD THIS (CRITICAL)
+      setDepartmentId(project.department_id || null);
+
       let resolvedCustomerName = "";
 
-      if (user.role === "admin" || user.role === "techsales") {
-        if (project.company_id) {
-          const cRes = await getCustomer(project.company_id);
-          if (cRes.data?.company) {
-            resolvedCustomerName = cRes.data.company.name;
-            setCustomerName(resolvedCustomerName);
-          }
-        }
-      } else {
-        if (project.company_name) {
-          resolvedCustomerName = project.company_name;
+      if (isAdminLike && project.company_id) {
+        const cRes = await getCustomer(project.company_id);
+        if (cRes.data?.company) {
+          resolvedCustomerName = cRes.data.company.name;
           setCustomerName(resolvedCustomerName);
         }
+      } else if (project.company_name) {
+        setCustomerName(project.company_name);
       }
-
-      // ❗ NO BREADCRUMB LOGIC HERE
-      // Breadcrumb will be set in a separate useEffect
     } catch (err) {
       console.error("Error loading project/customer:", err);
     }
@@ -120,7 +129,18 @@ const SubFoldersPage = () => {
 
   const loadSubFolders = async () => {
     const res = await getSubFolders(folderId);
-    setSubfolders(res.data || []);
+
+    let data = res.data || [];
+
+    // EXTRA FRONTEND SAFETY
+    if (user.role === "customer") {
+      data = data.map((sf) => ({
+        ...sf,
+        document_count: sf.approved_document_count ?? 0,
+      }));
+    }
+
+    setSubfolders(data);
   };
 
   useEffect(() => {
@@ -141,6 +161,41 @@ const SubFoldersPage = () => {
   useEffect(() => {
     if (!projectName || folderChain.length === 0) return;
 
+    // =====================
+    // TEAMS FLOW (FINAL & CORRECT)
+    // =====================
+    if (isTeamsRoute) {
+      const crumbs = [
+        { label: "Teams", to: "/teams" },
+        { label: "Departments", to: "/teams/departments" },
+      ];
+
+      // ✅ Department Projects (ONLY if departmentId exists)
+      if (departmentId) {
+        crumbs.push({
+          label: "Department Projects",
+          to: `/teams/departments/${departmentId}/projects`,
+        });
+      }
+
+      // ✅ Project → Folders
+      crumbs.push({
+        label: projectName,
+        to: `/teams/projects/${projectId}/folders`,
+      });
+
+      // ✅ Active folder
+      crumbs.push({
+        label: folderChain[folderChain.length - 1].name,
+      });
+
+      setBreadcrumb(crumbs);
+      return;
+    }
+
+    // =====================
+    // NON-TEAMS FLOW (UNCHANGED)
+    // =====================
     const crumbs = [{ label: "Projects", to: "/projects" }];
 
     if (isAdminLike && customerName && companyId) {
@@ -150,25 +205,26 @@ const SubFoldersPage = () => {
       });
     }
 
-    // Project → folders page
-    crumbs.push({
-      label: projectName,
-      to: `/projects/${projectId}/folders`,
-    });
-
-    // ✅ CURRENT FOLDER (Customer Documents)
-    crumbs.push({
-      label: folderChain[folderChain.length - 1].name,
-    });
+    crumbs.push(
+      {
+        label: projectName,
+        to: `/projects/${projectId}/folders`,
+      },
+      {
+        label: folderChain[folderChain.length - 1].name,
+      },
+    );
 
     setBreadcrumb(crumbs);
   }, [
     projectName,
-    customerName,
-    companyId,
     folderChain,
     projectId,
+    departmentId,
+    customerName,
+    companyId,
     isAdminLike,
+    isTeamsRoute,
   ]);
 
   // const handleCreate = async (data) => {
@@ -202,7 +258,7 @@ const SubFoldersPage = () => {
         {
           position: "top-center",
           autoClose: 4000,
-        }
+        },
       );
       return;
     }
@@ -231,7 +287,7 @@ const SubFoldersPage = () => {
       ) {
         toast.error(
           "You cannot create a shared sub-folder inside a private folder.",
-          { position: "top-center", autoClose: 4000 }
+          { position: "top-center", autoClose: 4000 },
         );
       } else {
         toast.error("Failed to create sub-folder. Please try again.");
@@ -274,15 +330,7 @@ const SubFoldersPage = () => {
   // -------------------------------
   if (loading) {
     return (
-      <div
-        className="
-          w-full
-          min-h-screen lg:h-[calc(100vh-80px)]
-          bg-gradient-to-br from-slate-50 via-indigo-50/30 to-purple-50/40
-          flex items-center justify-center
-          p-4 sm:p-6
-        "
-      >
+      <div className="w-full py-12 flex items-center justify-center">
         <div className="text-center space-y-6">
           {/* Animated Loader */}
           <div className="relative inline-flex items-center justify-center">
@@ -327,32 +375,17 @@ const SubFoldersPage = () => {
   }
 
   return (
-    <div
-      className="
-    w-full
-    h-screen
-    lg:h-[calc(100vh-80px)]
-    overflow-y-auto
-    overflow-x-hidden
-    scroll-smooth
-    bg-gradient-to-br from-gray-50 via-white to-gray-50
-    p-4 sm:p-6 md:p-8
-  "
-      style={{
-        scrollbarWidth: "thin",
-        scrollbarColor: "#cbd5e1 transparent",
-      }}
-    >
-      <div className="px-4 py-4 sm:p-6 max-w-7xl mx-auto space-y-6">
+    <>
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 md:px-8 pb-6 space-y-6">
         {/* ==================== BREADCRUMB NAVIGATION ==================== */}
 
         {/* Enhanced Header */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 sm:p-5">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-4">
               <div
-                className="p-3 bg-gradient-to-br from-indigo-50 to-purple-50 
-                            rounded-2xl shadow-sm"
+                className="p-2 bg-gradient-to-br from-indigo-50 to-purple-50 
+              rounded-xl shadow-sm"
               >
                 <FolderOpen
                   className="w-7 h-7 text-indigo-600"
@@ -360,7 +393,7 @@ const SubFoldersPage = () => {
                 />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2">
                   {folderChain.length === 1 ? "Sub Folders" : "Documents"}
                   {subfolders.length > 0 && (
                     <span
@@ -384,23 +417,45 @@ const SubFoldersPage = () => {
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="hidden sm:flex items-center gap-3">
+              {/* Search (DESKTOP) */}
+              <div className="relative w-64">
+                <input
+                  type="text"
+                  placeholder="Search sub folders..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="
+        w-full
+        px-3 py-2
+        text-sm
+        rounded-lg
+        border border-gray-200
+        bg-white
+        focus:outline-none
+        focus:ring-2 focus:ring-indigo-500/20
+        focus:border-indigo-400
+      "
+                />
+              </div>
+
+              {/* New Sub Folder */}
               {isAdminLike && folderChain.length === 1 && (
                 <button
                   onClick={() => setShowCreate(true)}
                   className="
-    inline-flex items-center gap-1.5
-    px-3 py-1.5 sm:px-3.5 sm:py-2
-    text-xs sm:text-sm font-semibold
-    text-white
-    bg-gradient-to-r from-indigo-600 to-purple-600
-    rounded-lg
-    hover:from-indigo-700 hover:to-purple-700
-    transition-all duration-200
-    active:scale-95
-  "
+        inline-flex items-center gap-1.5
+        px-3.5 py-2
+        text-sm font-semibold
+        text-white
+        bg-gradient-to-r from-indigo-600 to-purple-600
+        rounded-lg
+        hover:from-indigo-700 hover:to-purple-700
+        transition-all
+        active:scale-95
+      "
                 >
-                  <FolderPlus className="w-4 h-4" strokeWidth={2} />
+                  <FolderPlus className="w-4 h-4" />
                   New Sub Folder
                 </button>
               )}
@@ -408,18 +463,66 @@ const SubFoldersPage = () => {
           </div>
         </div>
 
+        {/* MOBILE SEARCH */}
+        <div className="sm:hidden">
+          <input
+            type="text"
+            placeholder="Search sub folders..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="
+      w-full
+      px-3 py-2.5
+      text-sm
+      rounded-lg
+      border border-gray-200
+      bg-white
+      focus:outline-none
+      focus:ring-2 focus:ring-indigo-500/20
+      focus:border-indigo-400
+    "
+          />
+        </div>
+
+        {/* MOBILE NEW SUB FOLDER CTA */}
+        {isAdminLike && folderChain.length === 1 && (
+          <div className="sm:hidden">
+            <button
+              onClick={() => setShowCreate(true)}
+              className="
+  w-[140px]
+  inline-flex items-center justify-center gap-2
+  px-3 py-2
+  text-sm font-semibold
+  text-white
+  bg-gradient-to-r from-indigo-600 to-purple-600
+  rounded-lg
+  shadow-md
+  active:scale-95
+"
+            >
+              <FolderPlus className="w-4 h-4" />
+              Sub Folder
+            </button>
+          </div>
+        )}
+
         {/* Subfolders Grid */}
         {subfolders.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6 pb-24">
-            {subfolders.map((sf, index) => (
-              <div
-                key={sf.id}
-                onClick={() =>
-                  navigate(`/projects/${projectId}/documents/${sf.id}`)
-                }
-                onMouseEnter={() => setHoveredFolder(sf.id)}
-                onMouseLeave={() => setHoveredFolder(null)}
-                className="group relative cursor-pointer
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
+            {subfolders
+              .filter((sf) =>
+                sf.name.toLowerCase().includes(searchTerm.toLowerCase()),
+              )
+              .map((sf, index) => (
+                <div
+                  key={sf.id}
+                  onClick={() =>
+                    navigate(`${basePath}/${projectId}/documents/${sf.id}`)
+                  }
+                  onMouseEnter={() => setHoveredFolder(sf.id)}
+                  onMouseLeave={() => setHoveredFolder(null)}
+                  className="group relative cursor-pointer
           bg-white/80 backdrop-blur-xl
           rounded-xl sm:rounded-2xl
           border border-gray-100 hover:border-indigo-200
@@ -428,27 +531,27 @@ const SubFoldersPage = () => {
           overflow-hidden
           transform hover:-translate-y-1
         "
-              >
-                {/* Gradient Top Strip */}
-                <div
-                  className={`h-1.5 bg-gradient-to-r ${
-                    index % 5 === 0
-                      ? "from-indigo-500 to-purple-500"
-                      : index % 5 === 1
-                      ? "from-emerald-500 to-teal-500"
-                      : index % 5 === 2
-                      ? "from-amber-500 to-orange-500"
-                      : index % 5 === 3
-                      ? "from-rose-500 to-pink-500"
-                      : "from-cyan-500 to-blue-500"
-                  }`}
-                />
+                >
+                  {/* Gradient Top Strip */}
+                  <div
+                    className={`h-1 bg-gradient-to-r ${
+                      index % 5 === 0
+                        ? "from-indigo-500 to-purple-500"
+                        : index % 5 === 1
+                          ? "from-emerald-500 to-teal-500"
+                          : index % 5 === 2
+                            ? "from-amber-500 to-orange-500"
+                            : index % 5 === 3
+                              ? "from-rose-500 to-pink-500"
+                              : "from-cyan-500 to-blue-500"
+                    }`}
+                  />
 
-                <div className="p-5 sm:p-6">
-                  <div className="flex items-start gap-4">
-                    {/* Icon */}
-                    <div
-                      className={`flex-shrink-0
+                  <div className="p-5 sm:p-6">
+                    <div className="flex items-start gap-4">
+                      {/* Icon */}
+                      <div
+                        className={`flex-shrink-0
                 w-12 h-12 sm:w-14 sm:h-14
                 rounded-xl sm:rounded-2xl
                 flex items-center justify-center
@@ -460,79 +563,80 @@ const SubFoldersPage = () => {
                   index % 5 === 0
                     ? "from-indigo-500 to-purple-600 shadow-indigo-500/30"
                     : index % 5 === 1
-                    ? "from-emerald-500 to-teal-600 shadow-emerald-500/30"
-                    : index % 5 === 2
-                    ? "from-amber-500 to-orange-600 shadow-amber-500/30"
-                    : index % 5 === 3
-                    ? "from-rose-500 to-pink-600 shadow-rose-500/30"
-                    : "from-cyan-500 to-blue-600 shadow-cyan-500/30"
+                      ? "from-emerald-500 to-teal-600 shadow-emerald-500/30"
+                      : index % 5 === 2
+                        ? "from-amber-500 to-orange-600 shadow-amber-500/30"
+                        : index % 5 === 3
+                          ? "from-rose-500 to-pink-600 shadow-rose-500/30"
+                          : "from-cyan-500 to-blue-600 shadow-cyan-500/30"
                 }
               `}
-                    >
-                      <Folder className="w-6 h-6 sm:w-7 sm:h-7 text-white group-hover:hidden" />
-                      <FolderOpen className="w-6 h-6 sm:w-7 sm:h-7 text-white hidden group-hover:block" />
-                    </div>
-
-                    {/* Title + Meta */}
-                    <div className="flex-1 min-w-0">
-                      <h3
-                        title={sf.name}
-                        className="text-base sm:text-lg font-bold text-gray-900
-                           group-hover:text-indigo-600 transition-colors truncate"
                       >
-                        {sf.name}
-                      </h3>
-
-                      <div className="flex items-center gap-3 mt-1.5 text-xs text-gray-500">
-                        <span className="flex items-center gap-1">
-                          <FileText className="w-3 h-3" />
-                          {sf.document_count || 0} docs
-                        </span>
-                        {sf.created_at && (
-                          <span>
-                            {new Date(sf.created_at).toLocaleDateString()}
-                          </span>
-                        )}
+                        <Folder className="w-6 h-6 sm:w-7 sm:h-7 text-white group-hover:hidden" />
+                        <FolderOpen className="w-6 h-6 sm:w-7 sm:h-7 text-white hidden group-hover:block" />
                       </div>
-                    </div>
 
-                    {/* Admin Delete */}
-                    {isAdminLike && (
-                      <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={(e) => handleDeleteFolder(sf, e)}
-                          disabled={deletingId === sf.id}
-                          className="p-2 bg-red-50 rounded-lg text-red-500
+                      {/* Title + Meta */}
+                      <div className="flex-1 min-w-0">
+                        <h3
+                          title={sf.name}
+                          className="text-base sm:text-lg font-bold text-gray-900
+                           group-hover:text-indigo-600 transition-colors truncate"
+                        >
+                          {sf.name}
+                        </h3>
+
+                        <div className="flex items-center gap-3 mt-1.5 text-xs text-gray-500">
+                          <span className="flex items-center gap-1">
+                            <FileText className="w-3 h-3" />
+                            {getVisibleDocCount(sf)} docs
+                          </span>
+
+                          {sf.created_at && (
+                            <span>
+                              {new Date(sf.created_at).toLocaleDateString()}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Admin Delete */}
+                      {isAdminLike && (
+                        <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={(e) => handleDeleteFolder(sf, e)}
+                            disabled={deletingId === sf.id}
+                            className="p-2 bg-red-50 rounded-lg text-red-500
                              hover:bg-red-100 transition-colors
                              disabled:opacity-50"
-                          title="Move to Recycle Bin"
-                        >
-                          {deletingId === sf.id ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <Trash2 className="w-4 h-4" strokeWidth={1.5} />
-                          )}
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                            title="Move to Recycle Bin"
+                          >
+                            {deletingId === sf.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="w-4 h-4" strokeWidth={1.5} />
+                            )}
+                          </button>
+                        </div>
+                      )}
+                    </div>
 
-                  {/* Footer */}
-                  <div className="mt-5 pt-4 border-t border-gray-100 flex items-center justify-between">
-                    <span className="text-sm text-indigo-600 font-medium">
-                      Open Sub Folder
-                    </span>
+                    {/* Footer */}
+                    <div className="mt-5 pt-4 border-t border-gray-100 flex items-center justify-between">
+                      <span className="text-sm text-indigo-600 font-medium">
+                        Open Sub Folder
+                      </span>
 
-                    <ChevronRight
-                      className="w-5 h-5 text-gray-400
+                      <ChevronRight
+                        className="w-5 h-5 text-gray-400
                                      group-hover:text-indigo-500
                                      group-hover:translate-x-1
                                      transition-all"
-                    />
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
           </div>
         ) : null}
 
@@ -562,7 +666,7 @@ const SubFoldersPage = () => {
 
             <button
               onClick={() =>
-                navigate(`/projects/${projectId}/documents/${folderId}`)
+                navigate(`${basePath}/${projectId}/documents/${folderId}`)
               }
               className="inline-flex items-center gap-2 px-5 py-2.5
                        bg-white text-indigo-600 font-semibold rounded-xl
@@ -598,14 +702,14 @@ const SubFoldersPage = () => {
         )}
 
         {/* 👇 ADD THIS EXACTLY HERE */}
-        <div
+        {/* <div
           className="flex justify-center pt-4 pb-16"
           style={{
             paddingBottom: "calc(env(safe-area-inset-bottom) + 4rem)",
           }}
         >
           <span className="sr-only">scroll spacer</span>
-        </div>
+        </div> */}
 
         <CreateFolderModal
           open={showCreate}
@@ -636,7 +740,7 @@ const SubFoldersPage = () => {
   }
 `}</style>
       </div>
-    </div>
+    </>
   );
 };
 

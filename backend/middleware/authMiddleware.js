@@ -17,18 +17,22 @@ export const authMiddleware = (req, res, next) => {
     }
 
     if (!token) {
-      console.log("❌ No token provided");
+      // console.log("❌ No token provided");
       return res.status(401).json({ message: "No token provided" });
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded;
+
+    req.user = {
+      ...decoded,
+      departmentId: decoded.department_id || decoded.departmentId || null,
+    };
 
     // console.log("✔ Token OK →", decoded);
 
     next();
   } catch (err) {
-    console.log("❌ Invalid token:", err.message);
+    // console.log("❌ Invalid token:", err.message);
     return res.status(401).json({ message: "Invalid token" });
   }
 };

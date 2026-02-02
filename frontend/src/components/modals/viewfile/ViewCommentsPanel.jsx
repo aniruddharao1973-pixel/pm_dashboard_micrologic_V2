@@ -168,7 +168,6 @@
 
 // export default ViewCommentsPanel;
 
-
 //  // src/components/modals/viewfile/ViewCommentsPanel.jsx
 // import React, { useEffect, useRef, useState } from "react";
 // import { socket, joinDocumentRoom, leaveDocumentRoom } from "../../../socket";
@@ -280,7 +279,7 @@
 //     const date = new Date(timestamp);
 //     const now = new Date();
 //     const diff = now - date;
-    
+
 //     if (diff < 60000) return 'Just now';
 //     if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
 //     if (diff < 86400000) return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
@@ -330,12 +329,12 @@
 
 //       return (
 //         <div key={c.id} className={`flex gap-3 ${mine ? 'flex-row-reverse' : 'flex-row'}`}>
-          
+
 //           {/* AVATAR */}
 //           <div className="flex-shrink-0">
 //             {showAvatar ? (
 //               <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold shadow-sm ${
-//                 mine 
+//                 mine
 //                   ? 'bg-gradient-to-br from-purple-500 to-purple-600 text-white'
 //                   : 'bg-gradient-to-br from-blue-500 to-blue-600 text-white'
 //               }`}>
@@ -348,7 +347,7 @@
 
 //           {/* MESSAGE BUBBLE */}
 //           <div className={`flex-1 max-w-[75%] flex flex-col ${mine ? 'items-end' : 'items-start'}`}>
-            
+
 //             {showAvatar && (
 //               <div className={`flex items-center gap-2 mb-1 ${mine ? 'flex-row-reverse' : 'flex-row'}`}>
 //                 <span className="text-xs font-medium text-gray-700">
@@ -376,7 +375,6 @@
 //   )}
 //   <div ref={commentsEndRef} />
 // </div>
-
 
 //       {/* Input box */}
 //       <div className="p-4 border-t border-gray-200 bg-white">
@@ -426,7 +424,7 @@
 //             )}
 //           </button>
 //         </div>
-        
+
 //         <p className="text-xs text-gray-400 mt-2 ml-1">
 //           Press Enter to send, Shift + Enter for new line
 //         </p>
@@ -436,9 +434,6 @@
 // };
 
 // export default ViewCommentsPanel;
-
-
-
 
 // // src/components/modals/viewfile/ViewCommentsPanel.jsx
 // import React, { useEffect, useRef, useState } from "react";
@@ -551,7 +546,7 @@
 //     const date = new Date(timestamp);
 //     const now = new Date();
 //     const diff = now - date;
-    
+
 //     if (diff < 60000) return 'Just now';
 //     if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
 //     if (diff < 86400000) return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
@@ -601,12 +596,12 @@
 
 //             return (
 //               <div key={c.id} className={`flex gap-2 sm:gap-3 ${mine ? 'flex-row-reverse' : 'flex-row'}`}>
-                
+
 //                 {/* AVATAR */}
 //                 <div className="flex-shrink-0">
 //                   {showAvatar ? (
 //                     <div className={`w-6 h-6 sm:w-7 md:w-8 sm:h-7 md:h-8 rounded-full flex items-center justify-center text-[10px] sm:text-xs font-semibold shadow-sm ${
-//                       mine 
+//                       mine
 //                         ? 'bg-gradient-to-br from-purple-500 to-purple-600 text-white'
 //                         : 'bg-gradient-to-br from-blue-500 to-blue-600 text-white'
 //                     }`}>
@@ -619,7 +614,7 @@
 
 //                 {/* MESSAGE BUBBLE */}
 //                 <div className={`flex-1 max-w-[85%] sm:max-w-[80%] md:max-w-[75%] flex flex-col ${mine ? 'items-end' : 'items-start'}`}>
-                  
+
 //                   {showAvatar && (
 //                     <div className={`flex items-center gap-1.5 sm:gap-2 mb-0.5 sm:mb-1 ${mine ? 'flex-row-reverse' : 'flex-row'}`}>
 //                       <span className="text-[10px] sm:text-xs font-medium text-gray-700">
@@ -696,7 +691,7 @@
 //             )}
 //           </button>
 //         </div>
-        
+
 //         <p className="text-[10px] sm:text-xs text-gray-400 mt-1.5 sm:mt-2 ml-0.5 sm:ml-1">
 //           Press Enter to send, Shift + Enter for new line
 //         </p>
@@ -706,8 +701,6 @@
 // };
 
 // export default ViewCommentsPanel;
-
-
 
 // src/components/modals/viewfile/ViewCommentsPanel.jsx
 import React, { useEffect, useRef, useState } from "react";
@@ -816,24 +809,30 @@ const ViewCommentsPanel = ({ file, user, pushToast }) => {
 
   // UI HELPER FUNCTION
   const formatTime = (timestamp) => {
-    if (!timestamp) return '';
+    if (!timestamp) return "";
     const date = new Date(timestamp);
     const now = new Date();
     const diff = now - date;
-    
-    if (diff < 60000) return 'Just now';
+
+    if (diff < 60000) return "Just now";
     if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
-    if (diff < 86400000) return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    if (diff < 86400000)
+      return date.toLocaleTimeString("en-US", {
+        hour: "numeric",
+        minute: "2-digit",
+      });
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   };
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-white">
       {/* Header */}
       <div className="px-4 sm:px-5 md:px-6 py-3 sm:py-3.5 md:py-4 border-b border-gray-200 bg-white">
-        <h3 className="text-base sm:text-lg font-semibold text-gray-900">Comments</h3>
+        <h3 className="text-base sm:text-lg font-semibold text-gray-900">
+          Comments
+        </h3>
         <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
-          {comments.length} {comments.length === 1 ? 'comment' : 'comments'}
+          {comments.length} {comments.length === 1 ? "comment" : "comments"}
         </p>
       </div>
 
@@ -842,9 +841,18 @@ const ViewCommentsPanel = ({ file, user, pushToast }) => {
         <div className="px-4 sm:px-5 md:px-6 py-2 bg-gray-50 border-b border-gray-100">
           <div className="flex items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs text-gray-500">
             <div className="flex gap-0.5 sm:gap-1">
-              <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-              <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-              <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+              <span
+                className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"
+                style={{ animationDelay: "0ms" }}
+              />
+              <span
+                className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"
+                style={{ animationDelay: "150ms" }}
+              />
+              <span
+                className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"
+                style={{ animationDelay: "300ms" }}
+              />
             </div>
             <span>{Object.values(typingUsers).join(", ")} typing…</span>
           </div>
@@ -856,30 +864,52 @@ const ViewCommentsPanel = ({ file, user, pushToast }) => {
         {comments.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center px-4">
             <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gray-100 flex items-center justify-center mb-3 sm:mb-4">
-              <svg className="w-7 h-7 sm:w-8 sm:h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              <svg
+                className="w-7 h-7 sm:w-8 sm:h-8 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                />
               </svg>
             </div>
-            <h4 className="text-sm font-medium text-gray-900 mb-1">No comments yet</h4>
-            <p className="text-xs sm:text-sm text-gray-500">Be the first to share your thoughts</p>
+            <h4 className="text-sm font-medium text-gray-900 mb-1">
+              No comments yet
+            </h4>
+            <p className="text-xs sm:text-sm text-gray-500">
+              Be the first to share your thoughts
+            </p>
           </div>
         ) : (
           comments.map((c, idx) => {
             const mine = c.user_id === user.id;
-            const showAvatar = idx === 0 || comments[idx - 1].user_id !== c.user_id;
+            const showAvatar =
+              idx === 0 || comments[idx - 1].user_id !== c.user_id;
 
             return (
-              <div key={c.id} className={`flex gap-2 sm:gap-3 ${mine ? 'flex-row-reverse' : 'flex-row'}`}>
-                
+              <div
+                key={c.id}
+                className={`flex gap-2 sm:gap-3 ${
+                  mine ? "flex-row-reverse" : "flex-row"
+                }`}
+              >
                 {/* AVATAR */}
                 <div className="flex-shrink-0">
                   {showAvatar ? (
-                    <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-[11px] sm:text-xs font-semibold shadow-sm ${
-                      mine 
-                        ? 'bg-gradient-to-br from-purple-500 to-purple-600 text-white'
-                        : 'bg-gradient-to-br from-blue-500 to-blue-600 text-white'
-                    }`}>
-                      {(mine ? user.name : c.user_name)?.[0]?.toUpperCase() || '?'}
+                    <div
+                      className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-[11px] sm:text-xs font-semibold shadow-sm ${
+                        mine
+                          ? "bg-gradient-to-br from-purple-500 to-purple-600 text-white"
+                          : "bg-gradient-to-br from-blue-500 to-blue-600 text-white"
+                      }`}
+                    >
+                      {(mine ? user.name : c.user_name)?.[0]?.toUpperCase() ||
+                        "?"}
                     </div>
                   ) : (
                     <div className="w-7 sm:w-8" />
@@ -887,10 +917,17 @@ const ViewCommentsPanel = ({ file, user, pushToast }) => {
                 </div>
 
                 {/* MESSAGE BUBBLE */}
-                <div className={`flex-1 max-w-[80%] sm:max-w-[75%] flex flex-col ${mine ? 'items-end' : 'items-start'}`}>
-                  
+                <div
+                  className={`flex-1 max-w-[80%] sm:max-w-[75%] flex flex-col ${
+                    mine ? "items-end" : "items-start"
+                  }`}
+                >
                   {showAvatar && (
-                    <div className={`flex items-center gap-1.5 sm:gap-2 mb-1 ${mine ? 'flex-row-reverse' : 'flex-row'}`}>
+                    <div
+                      className={`flex items-center gap-1.5 sm:gap-2 mb-1 ${
+                        mine ? "flex-row-reverse" : "flex-row"
+                      }`}
+                    >
                       <span className="text-[11px] sm:text-xs font-medium text-gray-700">
                         {mine ? "You" : c.user_name}
                       </span>
@@ -900,11 +937,13 @@ const ViewCommentsPanel = ({ file, user, pushToast }) => {
                     </div>
                   )}
 
-                  <div className={`px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl shadow-sm transition-all duration-200 ${
-                    mine
-                      ? 'bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-tr-sm'
-                      : 'bg-white border border-gray-200 text-gray-800 rounded-tl-sm hover:shadow-md'
-                  }`}>
+                  <div
+                    className={`px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl shadow-sm transition-all duration-200 ${
+                      mine
+                        ? "bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-tr-sm"
+                        : "bg-white border border-gray-200 text-gray-800 rounded-tl-sm hover:shadow-md"
+                    }`}
+                  >
                     <p className="text-xs sm:text-sm leading-relaxed whitespace-pre-wrap break-words">
                       {c.message}
                     </p>
@@ -929,14 +968,15 @@ const ViewCommentsPanel = ({ file, user, pushToast }) => {
               onChange={(e) => {
                 setMessage(e.target.value);
                 emitTyping();
-                e.target.style.height = 'auto';
-                e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
+                e.target.style.height = "auto";
+                e.target.style.height =
+                  Math.min(e.target.scrollHeight, 120) + "px";
               }}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
                   handleSend();
-                  e.target.style.height = 'auto';
+                  e.target.style.height = "auto";
                 }
               }}
               data-gramm="false"
@@ -945,7 +985,7 @@ const ViewCommentsPanel = ({ file, user, pushToast }) => {
               autoCorrect="off"
               autoComplete="off"
               spellCheck="false"
-              style={{ minHeight: '38px', maxHeight: '120px' }}
+              style={{ minHeight: "38px", maxHeight: "120px" }}
             />
           </div>
 
@@ -954,8 +994,8 @@ const ViewCommentsPanel = ({ file, user, pushToast }) => {
             disabled={sending}
             className={`flex-shrink-0 w-9 h-9 sm:w-10 sm:h-10 md:w-11 md:h-11 rounded-full flex items-center justify-center transition-all duration-200 ${
               !sending && message.trim()
-                ? 'bg-gradient-to-br from-purple-500 to-purple-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95'
-                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                ? "bg-gradient-to-br from-purple-500 to-purple-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95"
+                : "bg-gray-200 text-gray-400 cursor-not-allowed"
             }`}
           >
             {sending ? (
@@ -965,7 +1005,7 @@ const ViewCommentsPanel = ({ file, user, pushToast }) => {
             )}
           </button>
         </div>
-        
+
         <p className="text-[10px] sm:text-xs text-gray-400 mt-1.5 sm:mt-2 ml-1">
           Press Enter to send, Shift + Enter for new line
         </p>

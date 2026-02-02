@@ -9,9 +9,20 @@ export const useDocumentsApi = () => {
    DOCUMENT UPLOAD / CRUD
   =========================================
   */
-  const uploadDocument = async (formData) => {
-    return await api.post("/documents/upload", formData, {
-      headers: { "Content-Type": "multipart/form-data" },
+  // const uploadDocument = async (formData) => {
+  //   return await api.post("/documents/upload", formData, {
+  //     headers: { "Content-Type": "multipart/form-data" },
+  //   });
+  // };
+
+  // ✅ FIXED — plain JS only, no JSX
+  const uploadDocument = async (formData, config = {}) => {
+    return api.post("/documents/upload", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+        ...(config.headers || {}),
+      },
+      ...config,
     });
   };
 
@@ -25,6 +36,25 @@ export const useDocumentsApi = () => {
 
   const toggleDownload = (documentId, canDownload) =>
     api.patch(`/documents/${documentId}/toggle-download`, { canDownload });
+
+  /*
+=========================================
+ SIGNATURE ACCESS (ADMIN / TECHSALES)
+=========================================
+*/
+  const updateSignatureAccess = (
+    documentId,
+    { allow_customer_sign, allow_department_sign },
+  ) =>
+    api.patch(`/documents/${documentId}/signature-access`, {
+      allow_customer_sign,
+      allow_department_sign,
+    });
+
+  const downloadDocumentVersion = (versionId) =>
+    api.get(`/documents/download/${versionId}`, {
+      responseType: "blob", // ⭐ REQUIRED for file download
+    });
 
   /*
   =========================================
@@ -66,12 +96,44 @@ export const useDocumentsApi = () => {
   const restoreDocument = (documentId) =>
     api.post(`/documents/${documentId}/restore`);
 
+  /*
+=========================================
+ SIGN DOCUMENT (DRAWN SIGNATURE)
+=========================================
+*/
+  const signDocument = (documentId, payload) =>
+    api.post(`/documents/${documentId}/sign`, payload);
+
+  // REVIEW ACTIONS (Admin / TechSales)
+  const approveDocument = (documentId, payload = {}) =>
+    api.post(`/documents/${documentId}/approve`, payload);
+
+  const rejectDocument = (documentId, payload = {}) =>
+    api.post(`/documents/${documentId}/reject`, payload);
+
+  // Timeline alias – same API but clearer intent
+  const getDocumentTimeline = (documentId) =>
+    api.get(`/documents/${documentId}/versions`);
+
+  /*
+=========================================
+ SIGNATURE ACCESS (POLLING - READ ONLY)
+=========================================
+*/
+  const getSignatureAccess = (documentId) =>
+    api.get(`/documents/${documentId}/signature-access`);
+
   return {
     uploadDocument,
     getDocumentsByFolder,
     getDocumentVersions,
     deleteDocument,
     toggleDownload,
+    updateSignatureAccess,
+    downloadDocumentVersion,
+
+    // 🔐 SIGNATURE
+    signDocument,
 
     // RECYCLE BIN
     getAdminRecycleBinDocuments,
@@ -82,6 +144,15 @@ export const useDocumentsApi = () => {
     // COMMENTS
     getComments,
     addComment,
+    getSignatureAccess,
+
+    // REVIEW
+
+    approveDocument,
+    rejectDocument,
+
+    // ➕ new alias
+    getDocumentTimeline,
 
     // NOTES
     getDocumentNotes,

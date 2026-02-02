@@ -1,3 +1,4 @@
+// src\context\BreadcrumbContext.jsx
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 
@@ -20,27 +21,32 @@ export const BreadcrumbProvider = ({ children }) => {
    * Public API for pages
    * Call inside useEffect of each page
    */
-  const setBreadcrumb = (breadcrumbItems = []) => {
+  const setBreadcrumb = React.useCallback((breadcrumbItems = []) => {
     if (!Array.isArray(breadcrumbItems)) {
       console.warn("Breadcrumb must be an array");
       return;
     }
     setItems(breadcrumbItems);
-  };
+  }, []);
 
   /**
    * Auto-reset breadcrumb on route change
    * Pages are expected to re-set their breadcrumb
    */
-  useEffect(() => {
+  // useEffect(() => {
+  //   setItems([]);
+  // }, [location.pathname]);
+
+  const clearBreadcrumb = React.useCallback(() => {
     setItems([]);
-  }, [location.pathname]);
+  }, []);
 
   return (
     <BreadcrumbContext.Provider
       value={{
         items,
         setBreadcrumb,
+        clearBreadcrumb,
       }}
     >
       {children}
