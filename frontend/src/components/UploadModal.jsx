@@ -359,6 +359,7 @@ const UploadModal = ({ open, onClose, folderId, projectId, onUploaded }) => {
 
   const [speedMap, setSpeedMap] = useState({}); // id -> KB/s
   const lastProgressRef = useRef({});
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
   useEffect(() => {
     // reset when modal closed
@@ -380,12 +381,13 @@ const UploadModal = ({ open, onClose, folderId, projectId, onUploaded }) => {
     if (!incomingFiles || incomingFiles.length === 0) return;
     const arr = Array.from(incomingFiles).slice(0, MAX_FILES);
     const existingKeys = new Set(
-      files.map((f) => `${f.file.name}|${f.file.size}`),
+      files.map((f) => `${f.file.name}|${f.file.size}|${f.file.lastModified}`),
     );
 
     const newItems = arr
       .map((file) => {
-        const key = `${file.name}|${file.size}`;
+        const key = `${file.name}|${file.size}|${file.lastModified}`;
+
         const isVideo = file.type.startsWith("video/");
         const tooLarge = isVideo
           ? file.size > MAX_VIDEO_SIZE
@@ -408,7 +410,13 @@ const UploadModal = ({ open, onClose, folderId, projectId, onUploaded }) => {
   };
 
   const handleFileInput = (e) => {
-    addFiles(e.target.files);
+    const selected = e.target.files;
+    if (!selected || selected.length === 0) return;
+
+    addFiles(selected);
+
+    // Android fix: allow re-selecting same file
+    e.target.value = "";
   };
 
   const handleDrop = (e) => {
@@ -468,15 +476,73 @@ const UploadModal = ({ open, onClose, folderId, projectId, onUploaded }) => {
 
     try {
       // 🔁 UPLOAD FILES ONE BY ONE (TRUE PROGRESS)
-      for (const item of files) {
+      // for (const item of files) {
+      //   const formData = new FormData();
+
+      //   // backend expects `files`
+      //   formData.append("files", item.file);
+      //   formData.append("folderId", folderId);
+      //   formData.append("projectId", projectId);
+      //   formData.append("title", ""); // backend auto-fills
+      //   // formData.append("comment", comment);
+      //   formData.append("reviewRequested", reviewRequested ? "true" : "false");
+
+      //   await uploadDocument(formData, {
+      //     onUploadProgress: (progressEvent) => {
+      //       if (!progressEvent.total) return;
+
+      //       const now = Date.now();
+      //       const prev = lastProgressRef.current[item.id] || {
+      //         time: now,
+      //         loaded: 0,
+      //       };
+
+      //       const timeDiff = (now - prev.time) / 1000; // seconds
+      //       const bytesDiff = progressEvent.loaded - prev.loaded;
+
+      //       let speedKbps = 0;
+      //       if (timeDiff > 0 && bytesDiff > 0) {
+      //         speedKbps = Math.round(bytesDiff / 1024 / timeDiff);
+      //       }
+
+      //       lastProgressRef.current[item.id] = {
+      //         time: now,
+      //         loaded: progressEvent.loaded,
+      //       };
+
+      //       const pct = Math.round(
+      //         (progressEvent.loaded * 100) / progressEvent.total,
+      //       );
+
+      //       setProgressMap((prevMap) => ({
+      //         ...prevMap,
+      //         [item.id]: pct,
+      //       }));
+
+      //       setSpeedMap((prevMap) => ({
+      //         ...prevMap,
+      //         [item.id]: speedKbps,
+      //       }));
+      //     },
+
+      //     // headers: {
+      //     //   "Content-Type": "multipart/form-data",
+      //     // },
+      //   });
+      // }
+
+      const MAX_PARALLEL_UPLOADS = isMobile ? 1 : 3;
+
+      const queue = [...files];
+      const active = new Set();
+
+      const uploadOne = async (item) => {
         const formData = new FormData();
 
-        // backend expects `files`
         formData.append("files", item.file);
         formData.append("folderId", folderId);
         formData.append("projectId", projectId);
-        formData.append("title", ""); // backend auto-fills
-        // formData.append("comment", comment);
+        formData.append("title", "");
         formData.append("reviewRequested", reviewRequested ? "true" : "false");
 
         await uploadDocument(formData, {
@@ -489,7 +555,7 @@ const UploadModal = ({ open, onClose, folderId, projectId, onUploaded }) => {
               loaded: 0,
             };
 
-            const timeDiff = (now - prev.time) / 1000; // seconds
+            const timeDiff = (now - prev.time) / 1000;
             const bytesDiff = progressEvent.loaded - prev.loaded;
 
             let speedKbps = 0;
@@ -516,11 +582,27 @@ const UploadModal = ({ open, onClose, folderId, projectId, onUploaded }) => {
               [item.id]: speedKbps,
             }));
           },
-
-          // headers: {
-          //   "Content-Type": "multipart/form-data",
-          // },
         });
+      };
+
+      while (queue.length > 0 || active.size > 0) {
+        while (queue.length > 0 && active.size < MAX_PARALLEL_UPLOADS) {
+          const item = queue.shift();
+
+          const task = uploadOne(item)
+            .catch((err) => {
+              console.error("Upload failed:", item.file.name, err);
+              throw err;
+            })
+            .finally(() => {
+              active.delete(task);
+            });
+
+          active.add(task);
+        }
+
+        // wait until any active upload finishes
+        await Promise.race(active);
       }
 
       // ✅ SUCCESS
@@ -542,43 +624,60 @@ const UploadModal = ({ open, onClose, folderId, projectId, onUploaded }) => {
       //   });
       // }
       if (typeof onUploaded === "function") {
-        await onUploaded(); // 🔥 WAIT for loadData to finish
+        await onUploaded();
       }
 
-      onClose();
-
-      // reset UI
+      // reset UI BEFORE closing
       setFiles([]);
-      // setComment("");
       setProgressMap({});
       if (fileInputRef.current) fileInputRef.current.value = "";
-      onClose();
-    } catch (err) {
-      console.error("Upload error:", err);
 
+      onClose(); // ✅ only once
+    } catch (err) {
       const status = err?.response?.status;
       const code = err?.response?.data?.code;
-      const msg = err?.response?.data?.message || err.message;
+      const msg =
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        "Upload failed";
 
+      // 🔒 Permission revoked mid-upload (folder access / role change)
       if (status === 403) {
         Swal.fire({
           icon: "error",
           title: "Upload Permission Revoked",
-          text: msg,
+          text: msg || "Your access was revoked while uploading.",
         });
-      } else if (code === "FILE_IN_RECYCLE_BIN") {
+        return;
+      }
+
+      // 🗑 File exists in recycle bin
+      if (code === "FILE_IN_RECYCLE_BIN") {
         Swal.fire({
           icon: "warning",
           title: "File Exists in Recycle Bin",
           text: msg,
         });
-      } else {
+        return;
+      }
+
+      // 📦 Validation error (size/type/etc.)
+      if (status === 400) {
         Swal.fire({
           icon: "error",
           title: "Upload Failed",
           text: msg,
         });
+        return;
       }
+
+      // ❌ Unexpected error (network / server crash / timeout)
+      console.error("Unexpected upload error:", err);
+      Swal.fire({
+        icon: "error",
+        title: "Upload Error",
+        text: "Something went wrong. Please try again.",
+      });
     } finally {
       setLoading(false);
     }
@@ -597,7 +696,7 @@ const UploadModal = ({ open, onClose, folderId, projectId, onUploaded }) => {
       <div
         className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
         onClick={() => {
-          if (!loading && window.innerWidth > 640) {
+          if (!loading && !isMobile) {
             onClose();
           }
         }}

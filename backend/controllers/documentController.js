@@ -171,7 +171,7 @@ export const uploadDocument = async (req, res) => {
         code: "FILE_TOO_LARGE",
         message: isVideo
           ? "Video file exceeds 250 MB limit"
-          : "File exceeds 25 MB limit",
+          : "File exceeds 100 MB limit",
       });
     }
   }
@@ -2033,10 +2033,16 @@ export const signDocument = async (req, res) => {
     /* ------------------------------------------------------------
        3️⃣ Load PDF
     ------------------------------------------------------------ */
-    const uploadsDir = path.join(process.cwd(), "uploads");
+    // const uploadsDir = path.join(process.cwd(), "uploads");
+    // const sourcePdfPath = path.join(
+    //   uploadsDir,
+    //   path.basename(latest.file_path),
+    // );
+
+    // Preserve subfolders like /uploads/03-02-2026/file.pdf
     const sourcePdfPath = path.join(
-      uploadsDir,
-      path.basename(latest.file_path),
+      process.cwd(),
+      latest.file_path.replace(/^\/+/, ""),
     );
 
     // ======== FIX: CLEAN VERSION NAMING ========
@@ -2051,8 +2057,17 @@ export const signDocument = async (req, res) => {
     );
 
     // 3) Paths
-    const signedFilePath = path.join("uploads", signedFileName);
-    const targetPdfPath = path.join(uploadsDir, signedFileName);
+    // const signedFilePath = path.join("uploads", signedFileName);
+    // const targetPdfPath = path.join(uploadsDir, signedFileName);
+
+    // Save signed file in SAME directory as original
+    const originalDir = path.dirname(latest.file_path); // /uploads/03-02-2026
+
+    const signedFilePath = path.join(originalDir, signedFileName);
+    const targetPdfPath = path.join(
+      process.cwd(),
+      signedFilePath.replace(/^\/+/, ""),
+    );
 
     // 4) Debug
     console.log("VERSION BUILD →", {
@@ -2190,6 +2205,9 @@ export const signDocument = async (req, res) => {
     ------------------------------------------------------------ */
     const signedPdfBytes = await pdfDoc.save();
     fs.writeFileSync(targetPdfPath, signedPdfBytes);
+    if (!fs.existsSync(targetPdfPath)) {
+      throw new Error("SIGNED_PDF_WRITE_FAILED");
+    }
 
     /* ------------------------------------------------------------
        8️⃣ Update document current version
