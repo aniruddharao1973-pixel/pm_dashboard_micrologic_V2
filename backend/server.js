@@ -10,6 +10,8 @@ import { Server } from "socket.io";
 import { pool } from "./db.js";
 import cookieParser from "cookie-parser";
 import { registerSocketHandlers } from "./socketHandlers.js";
+import "./jobs/recycleCleanup.js";
+
 
 dotenv.config();
 

@@ -1,3 +1,4 @@
+// Script to organize existing uploads into date-based folders
 import fs from "fs";
 import path from "path";
 

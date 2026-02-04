@@ -865,6 +865,7 @@ import { useBreadcrumb } from "../context/BreadcrumbContext";
 import { useProjectsApi } from "../api/projectsApi";
 import { useAdminApi } from "../api/adminApi";
 import DocumentTrackingModal from "../components/modals/DocumentTrackingModal";
+import DocumentStatusBanner from "../components/DocumentStatusBanner";
 
 import {
   Building2,
@@ -890,6 +891,7 @@ const DocumentsPage = () => {
   const safeFolderId = folderId && folderId !== "0" ? folderId : 0;
   const [searchParams] = useSearchParams();
   const focusDocId = searchParams.get("doc");
+  const reviewStatus = searchParams.get("status"); // approved | rejected
 
   const location = useLocation();
 
@@ -923,6 +925,9 @@ const DocumentsPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
 
   const [entryType, setEntryType] = useState("ROOT");
+  const [showReviewStatus, setShowReviewStatus] = useState(false);
+  const [spotlightActive, setSpotlightActive] = useState(false);
+
   // ROOT | SUB
 
   const loadFolderHierarchy = async () => {
@@ -1205,6 +1210,47 @@ const DocumentsPage = () => {
   //   return () => clearTimeout(timer);
   // }, [documents, focusDocId]);
 
+  // useEffect(() => {
+  //   if (!focusDocId || !documents.length) return;
+
+  //   const el = document.getElementById(`doc-${focusDocId}`);
+  //   if (!el) return;
+
+  //   const rect = el.getBoundingClientRect();
+  //   const viewportHeight = window.innerHeight;
+
+  //   const isFullyVisible = rect.top >= 0 && rect.bottom <= viewportHeight;
+
+  //   if (!isFullyVisible) {
+  //     el.scrollIntoView({
+  //       behavior: "smooth",
+  //       block: "center",
+  //     });
+  //   }
+
+  //   el.classList.add(
+  //     "ring-2",
+  //     "ring-violet-500",
+  //     "shadow-xl",
+  //     "scale-[1.02]",
+  //     "transition-all",
+  //   );
+
+  //   // 🧹 CLEAN URL — REMOVE ?doc=... AFTER USE
+  //   window.history.replaceState({}, document.title, location.pathname);
+
+  //   const timer = setTimeout(() => {
+  //     el.classList.remove(
+  //       "ring-2",
+  //       "ring-violet-500",
+  //       "shadow-xl",
+  //       "scale-[1.02]",
+  //     );
+  //   }, 3000);
+
+  //   return () => clearTimeout(timer);
+  // }, [documents, focusDocId, location.pathname]);
+
   useEffect(() => {
     if (!focusDocId || !documents.length) return;
 
@@ -1231,8 +1277,16 @@ const DocumentsPage = () => {
       "transition-all",
     );
 
-    // 🧹 CLEAN URL — REMOVE ?doc=... AFTER USE
-    window.history.replaceState({}, document.title, location.pathname);
+    // ✅ REMOVE ONLY `doc`, KEEP `status`
+    const params = new URLSearchParams(window.location.search);
+    params.delete("doc");
+
+    const newUrl =
+      params.toString().length > 0
+        ? `${location.pathname}?${params.toString()}`
+        : location.pathname;
+
+    window.history.replaceState({}, document.title, newUrl);
 
     const timer = setTimeout(() => {
       el.classList.remove(
@@ -1368,6 +1422,24 @@ const DocumentsPage = () => {
     }
   }, [safeFolderId]);
 
+
+
+  useEffect(() => {
+    if (!reviewStatus || !focusDocId) return;
+
+    setShowReviewStatus(true);
+    setSpotlightActive(true);
+
+    const timer = setTimeout(() => {
+      setShowReviewStatus(false);
+      setSpotlightActive(false);
+
+      navigate(location.pathname, { replace: true });
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, [reviewStatus, focusDocId, navigate, location.pathname]);
+
   /** Open Version History */
   const openVersions = async (doc) => {
     setVersionsFile(doc);
@@ -1485,6 +1557,19 @@ const DocumentsPage = () => {
 
   return (
     <div className="space-y-2 px-2 sm:px-3 md:px-4 lg:px-6 xl:px-8 pt-1 sm:pt-2 w-full max-w-full overflow-x-hidden">
+      {/* 🌑 SPOTLIGHT OVERLAY */}
+      {spotlightActive && (
+        <div className="fixed inset-0 z-30 pointer-events-none">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                "radial-gradient(circle at center, transparent 160px, rgba(0,0,0,0.55) 260px)",
+            }}
+          />
+        </div>
+      )}
       {/* DOCUMENTS SECTION - Fully Responsive */}
       <div
         className="
@@ -1505,6 +1590,8 @@ const DocumentsPage = () => {
     border-b border-gray-200
   "
         >
+          {/* ✅ REVIEW STATUS BANNER (APPROVED / REJECTED) */}
+
           <div className="flex flex-col gap-3">
             {/* TOP ROW: ICON + TITLE + DOCUMENT COUNT */}
             <div className="flex items-center justify-between">
@@ -1699,83 +1786,93 @@ const DocumentsPage = () => {
           ) : (
             /* Document Grid - Fully Responsive */
             <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-5 xl:gap-6 min-w-0">
-              {filteredDocuments.map((doc) => (
-                <div
-                  key={doc.id}
-                  id={`doc-${doc.id}`} // ⭐ REQUIRED FOR SCROLL
-                  className={`
-    group relative 
-    bg-gradient-to-br from-white to-gray-50 
-    rounded-lg lg:rounded-xl 
-    border border-gray-200 
-    transition-all duration-300 overflow-hidden
-    ${
-      doc.id === focusDocId
-        ? "ring-2 ring-violet-500 shadow-xl scale-[1.01]"
-        : "hover:border-blue-300 hover:shadow-md sm:hover:shadow-lg"
-    }
-  `}
-                >
-                  {/* Decorative gradient top */}
+              {filteredDocuments.map((doc) => {
+                const isFocused = String(doc.id) === String(focusDocId);
+                const showCardBanner =
+                  isFocused && showReviewStatus && reviewStatus;
+
+                return (
                   <div
-                    className="
-            absolute top-0 left-0 right-0 h-0.5 lg:h-1 
-            bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 
-            opacity-0 group-hover:opacity-100 
-            transition-opacity duration-300
-          "
-                  ></div>
+                    key={doc.id}
+                    id={`doc-${doc.id}`} // ⭐ REQUIRED FOR SCROLL
+                    className={`
+  group relative 
+  bg-gradient-to-br from-white to-gray-50 
+  rounded-lg lg:rounded-xl 
+  border border-gray-200 
+  transition-all duration-300 overflow-hidden
+  ${
+    isFocused
+      ? "ring-2 ring-violet-500 shadow-2xl scale-[1.05] z-40"
+      : spotlightActive
+        ? "opacity-40"
+        : "hover:border-blue-300 hover:shadow-md sm:hover:shadow-lg"
+  }
+`}
+                  >
+                    {/* ✅ STATUS BANNER — ONLY FOR THIS DOCUMENT */}
+                    {showCardBanner && (
+                      <div className="px-2 pt-2">
+                        <DocumentStatusBanner status={reviewStatus} compact />
+                      </div>
+                    )}
 
-                  {/* File Card Content */}
-                  <div className="p-2.5 sm:p-3 lg:p-4">
-                    <FileCard
-                      document={doc}
-                      user={user}
-                      canView={canView}
-                      canDelete={canDelete}
-                      onView={async () => {
-                        try {
-                          // Load all versions
-                          const res = await getDocumentVersions(doc.id);
-                          const versions = res.data || [];
-
-                          if (versions.length === 0) {
-                            alert("No versions found for this document");
-                            return;
-                          }
-
-                          const latest = versions[0]; // Latest version
-
-                          // Enrich document object with latest version metadata
-                          const enrichedFile = {
-                            ...doc,
-                            version_id: latest.id,
-                            uploaded_by: latest.uploaded_by,
-                          };
-
-                          // Open modal with correct version file
-                          setViewFile({
-                            ...enrichedFile,
-
-                            // 🔐 signature permissions from document row
-                            allow_customer_sign: doc.allow_customer_sign,
-                            allow_department_sign: doc.allow_department_sign,
-                          });
-                        } catch (err) {
-                          console.error("Error loading latest version:", err);
-                          alert(
-                            "Unable to open document — version lookup failed.",
-                          );
-                        }
-                      }}
-                      onVersions={() => openVersions(doc)}
-                      onDelete={() => {
-                        setDeleteFile(doc);
-                      }}
+                    {/* Decorative gradient top */}
+                    <div
+                      className="
+          absolute top-0 left-0 right-0 h-0.5 lg:h-1 
+          bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 
+          opacity-0 group-hover:opacity-100 
+          transition-opacity duration-300
+        "
                     />
+
+                    {/* File Card Content */}
+                    <div className="p-2.5 sm:p-3 lg:p-4">
+                      <FileCard
+                        document={doc}
+                        user={user}
+                        canView={canView}
+                        canDelete={canDelete}
+                        onView={async () => {
+                          try {
+                            const res = await getDocumentVersions(doc.id);
+                            const versions = res.data || [];
+
+                            if (versions.length === 0) {
+                              alert("No versions found for this document");
+                              return;
+                            }
+
+                            const latest = versions[0];
+
+                            const enrichedFile = {
+                              ...doc,
+                              version_id: latest.id,
+                              uploaded_by: latest.uploaded_by,
+                            };
+
+                            setViewFile({
+                              ...enrichedFile,
+                              allow_customer_sign: doc.allow_customer_sign,
+                              allow_department_sign: doc.allow_department_sign,
+                            });
+                          } catch (err) {
+                            console.error("Error loading latest version:", err);
+                            alert(
+                              "Unable to open document — version lookup failed.",
+                            );
+                          }
+                        }}
+                        onVersions={() => openVersions(doc)}
+                        onDelete={() => {
+                          setDeleteFile(doc);
+                        }}
+                      />
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

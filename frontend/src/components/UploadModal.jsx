@@ -937,7 +937,7 @@ const UploadModal = ({ open, onClose, folderId, projectId, onUploaded }) => {
                 </div>
 
                 {/* overall progress */}
-                {loading && (
+                {/* {loading && (
                   <div className="mt-3">
                     <div className="text-xs text-gray-600 mb-1">Overall</div>
                     <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
@@ -947,7 +947,7 @@ const UploadModal = ({ open, onClose, folderId, projectId, onUploaded }) => {
                       />
                     </div>
                   </div>
-                )}
+                )} */}
               </>
             )}
           </div>

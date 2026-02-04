@@ -2462,7 +2462,9 @@ export const approveDocument = async (req, res) => {
             notificationType: "approved",
             entityType: "document",
             entityId: documentId,
-            targetUrl: `/projects/${doc.project_id}/documents/${doc.folder_id}?doc=${documentId}`,
+            // targetUrl: `/projects/${doc.project_id}/documents/${doc.folder_id}?doc=${documentId}`,
+              targetUrl: `/projects/${doc.project_id}/documents/${doc.folder_id}?doc=${documentId}&status=approved`,
+
           });
 
           emitNotification({
@@ -2878,7 +2880,9 @@ export const rejectDocument = async (req, res) => {
             notificationType: "rejected",
             entityType: "document",
             entityId: documentId,
-            targetUrl: `/projects/${doc.project_id}/documents/${doc.folder_id}?doc=${documentId}`,
+            // targetUrl: `/projects/${doc.project_id}/documents/${doc.folder_id}?doc=${documentId}`,
+              targetUrl: `/projects/${doc.project_id}/documents/${doc.folder_id}?doc=${documentId}&status=rejected`,
+
           });
 
           emitNotification({
